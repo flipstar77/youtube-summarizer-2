@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git clone:*)",
+      "Bash(uv:*)",
+      "Bash(cp:*)",
+      "Bash(mkdir:*)",
+      "Bash(where uv)",
+      "Bash(echo $HOME)",
+      "Bash(.claude\\uv.bat --version)",
+      "Bash(chmod:*)",
+      "Bash(.claude/uv.sh:*)",
+      "Bash(setx:*)",
+      "Bash(\"C:\\Users\\Администратор\\.local\\bin\\uv.exe\" run .claudehookspre_tool_use.py)",
+      "Bash(\"C:\\Users\\Администратор\\.local\\bin\\uv.exe\" run .claude/hooks/pre_tool_use.py)",
+      "WebFetch(domain:github.com)",
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(pip install:*)",
+      "Bash(python test:*)",
+      "Bash(python:*)",
+      "Bash(ffmpeg:*)",
+      "Bash(taskkill:*)",
+      "Bash(npm start)",
+      "Bash(curl:*)",
+      "Bash(grep:*)",
+      "Bash(cat:*)",
+      "Bash(tasklist:*)",
+      "Bash(yt-dlp:*)",
+      "Bash(choco:*)",
+      "Bash(rm:*)"
+    ],
+    "deny": []
+  }
+}

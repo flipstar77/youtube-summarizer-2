@@ -1,0 +1,553 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - YouTube Summarizer{% endblock %}
+
+{% block content %}
+<style>
+    .hero-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem 0;
+        margin: -2rem -15px 2rem -15px;
+        border-radius: 0 0 20px 20px;
+    }
+    
+    .settings-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        border: 1px solid #f0f0f0;
+        transition: all 0.3s ease;
+        overflow: hidden;
+        margin-bottom: 2rem;
+    }
+    
+    .settings-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+    }
+    
+    .settings-header {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        padding: 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .setting-item {
+        border-bottom: 1px solid #f0f0f0;
+        padding: 1.5rem;
+        transition: background-color 0.3s ease;
+    }
+    
+    .setting-item:last-child {
+        border-bottom: none;
+    }
+    
+    .setting-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .setting-label {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 0.5rem;
+    }
+    
+    .setting-description {
+        font-size: 0.9rem;
+        color: #6c757d;
+        margin-bottom: 1rem;
+    }
+    
+    .api-key-input {
+        font-family: 'Courier New', monospace;
+        background-color: #f8f9fa;
+    }
+    
+    .btn-gradient {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+    }
+    
+    .btn-gradient:hover {
+        opacity: 0.9;
+        color: white;
+    }
+    
+    .status-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 0.5rem;
+    }
+    
+    .status-valid {
+        background-color: #28a745;
+    }
+    
+    .status-invalid {
+        background-color: #dc3545;
+    }
+    
+    .status-unknown {
+        background-color: #ffc107;
+    }
+    
+    .masked-value {
+        font-family: monospace;
+        color: #6c757d;
+        font-style: italic;
+    }
+    
+    .category-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+    }
+    
+    .icon-api {
+        background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+        color: white;
+    }
+    
+    .icon-database {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        color: #495057;
+    }
+    
+    .icon-app {
+        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        color: #495057;
+    }
+    
+    .icon-subscription {
+        background: linear-gradient(135deg, #ff8a80 0%, #ffb74d 100%);
+        color: white;
+    }
+</style>
+
+<div class="hero-section">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1><i class="fas fa-cog"></i> Settings & Configuration</h1>
+                <p class="lead mb-0">Manage API keys, database settings, and application preferences</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <div class="dropdown">
+                    <button class="btn btn-light btn-lg dropdown-toggle" data-bs-toggle="dropdown">
+                        <i class="fas fa-download"></i> Export
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="/export_settings">
+                            <i class="fas fa-file-export"></i> Export Settings
+                        </a></li>
+                        <li><a class="dropdown-item" href="/export_settings?include_sensitive=true">
+                            <i class="fas fa-key"></i> Export with API Keys
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- API Keys Section -->
+    <div class="settings-card">
+        <div class="settings-header">
+            <div class="d-flex align-items-center">
+                <div class="category-icon icon-api">
+                    <i class="fas fa-key fa-lg"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0">API Keys</h4>
+                    <small class="opacity-75">Configure API keys for external services</small>
+                </div>
+            </div>
+            <div>
+                <span class="badge bg-light text-dark">{{ api_keys|length }} keys</span>
+            </div>
+        </div>
+        {% for key_name, key_data in api_keys.items() %}
+            <div class="setting-item">
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <div class="setting-label">
+                            <span class="status-indicator status-unknown"></span>
+                            {{ key_name.replace('_api_key', '').title() }}
+                        </div>
+                        <div class="setting-description">{{ key_data.description }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <input type="password" 
+                                   class="form-control api-key-input" 
+                                   id="{{ key_name }}" 
+                                   placeholder="Enter API key..."
+                                   value="{% if key_data.has_value %}●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●{% endif %}">
+                            <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('{{ key_name }}')">
+                                <i class="fas fa-eye" id="{{ key_name }}_icon"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-sm btn-outline-primary" onclick="testApiKey('{{ key_name }}')">
+                                <i class="fas fa-check"></i> Test
+                            </button>
+                            <button class="btn btn-sm btn-gradient" onclick="saveApiKey('{{ key_name }}')">
+                                <i class="fas fa-save"></i> Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Database Settings Section -->
+    <div class="settings-card">
+        <div class="settings-header">
+            <div class="d-flex align-items-center">
+                <div class="category-icon icon-database">
+                    <i class="fas fa-database fa-lg"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0">Database Configuration</h4>
+                    <small class="opacity-75">Configure database connection settings</small>
+                </div>
+            </div>
+            <div>
+                <span class="badge bg-light text-dark">{{ database_settings|length }} settings</span>
+            </div>
+        </div>
+        {% for setting_name, setting_data in database_settings.items() %}
+            <div class="setting-item">
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <div class="setting-label">{{ setting_name.replace('_', ' ').title() }}</div>
+                        <div class="setting-description">{{ setting_data.description }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        {% if setting_data.type == 'boolean' %}
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="{{ setting_name }}"
+                                       {% if setting_data.value %}checked{% endif %}>
+                                <label class="form-check-label" for="{{ setting_name }}">
+                                    {{ 'Enabled' if setting_data.value else 'Disabled' }}
+                                </label>
+                            </div>
+                        {% elif setting_data.is_sensitive %}
+                            <input type="password" 
+                                   class="form-control api-key-input" 
+                                   id="{{ setting_name }}" 
+                                   placeholder="Enter value..."
+                                   value="{% if setting_data.has_value %}●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●{% endif %}">
+                        {% else %}
+                            <input type="text" class="form-control" id="{{ setting_name }}" 
+                                   value="{{ setting_data.value or '' }}" placeholder="Enter value...">
+                        {% endif %}
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-sm btn-gradient" onclick="saveSetting('{{ setting_name }}', 'database')">
+                            <i class="fas fa-save"></i> Save
+                        </button>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Application Settings Section -->
+    <div class="settings-card">
+        <div class="settings-header">
+            <div class="d-flex align-items-center">
+                <div class="category-icon icon-app">
+                    <i class="fas fa-sliders-h fa-lg"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0">Application Settings</h4>
+                    <small class="opacity-75">General application configuration</small>
+                </div>
+            </div>
+            <div>
+                <span class="badge bg-light text-dark">{{ app_settings|length }} settings</span>
+            </div>
+        </div>
+        {% for setting_name, setting_data in app_settings.items() %}
+            <div class="setting-item">
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <div class="setting-label">{{ setting_name.replace('_', ' ').title() }}</div>
+                        <div class="setting-description">{{ setting_data.description }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        {% if setting_data.type == 'boolean' %}
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="{{ setting_name }}"
+                                       {% if setting_data.value %}checked{% endif %}>
+                                <label class="form-check-label" for="{{ setting_name }}">
+                                    {{ 'Enabled' if setting_data.value else 'Disabled' }}
+                                </label>
+                            </div>
+                        {% elif setting_data.type == 'number' %}
+                            <input type="number" class="form-control" id="{{ setting_name }}" 
+                                   value="{{ setting_data.value or '' }}" placeholder="Enter number...">
+                        {% else %}
+                            <input type="text" class="form-control" id="{{ setting_name }}" 
+                                   value="{{ setting_data.value or '' }}" placeholder="Enter value...">
+                        {% endif %}
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-sm btn-gradient" onclick="saveSetting('{{ setting_name }}', 'application')">
+                            <i class="fas fa-save"></i> Save
+                        </button>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Subscription Settings Section -->
+    <div class="settings-card">
+        <div class="settings-header">
+            <div class="d-flex align-items-center">
+                <div class="category-icon icon-subscription">
+                    <i class="fas fa-rss fa-lg"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0">Subscription Settings</h4>
+                    <small class="opacity-75">Configure YouTube channel subscription behavior</small>
+                </div>
+            </div>
+            <div>
+                <span class="badge bg-light text-dark">{{ subscription_settings|length }} settings</span>
+            </div>
+        </div>
+        {% for setting_name, setting_data in subscription_settings.items() %}
+            <div class="setting-item">
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <div class="setting-label">{{ setting_name.replace('_', ' ').title() }}</div>
+                        <div class="setting-description">{{ setting_data.description }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        {% if setting_data.type == 'boolean' %}
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="{{ setting_name }}"
+                                       {% if setting_data.value %}checked{% endif %}>
+                                <label class="form-check-label" for="{{ setting_name }}">
+                                    {{ 'Enabled' if setting_data.value else 'Disabled' }}
+                                </label>
+                            </div>
+                        {% elif setting_data.type == 'number' %}
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="{{ setting_name }}" 
+                                       value="{{ setting_data.value or '' }}" placeholder="Enter seconds...">
+                                {% if 'interval' in setting_name %}
+                                    <span class="input-group-text">seconds</span>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <input type="text" class="form-control" id="{{ setting_name }}" 
+                                   value="{{ setting_data.value or '' }}" placeholder="Enter value...">
+                        {% endif %}
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-sm btn-gradient" onclick="saveSetting('{{ setting_name }}', 'subscriptions')">
+                            <i class="fas fa-save"></i> Save
+                        </button>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Processing Modal -->
+<div class="modal fade" id="processingModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <div class="mb-3">
+                    <div class="spinner-grow text-primary" style="width: 3rem; height: 3rem;"></div>
+                </div>
+                <h5 id="processingTitle"><i class="fas fa-cog"></i> Processing...</h5>
+                <p class="text-muted" id="processingMessage">Please wait...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function togglePasswordVisibility(elementId) {
+    const input = document.getElementById(elementId);
+    const icon = document.getElementById(elementId + '_icon');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+    } else {
+        input.type = 'password';
+        icon.className = 'fas fa-eye';
+    }
+}
+
+function saveApiKey(keyName) {
+    const value = document.getElementById(keyName).value;
+    const provider = keyName.replace('_api_key', '');
+    
+    if (!value || value.startsWith('●')) {
+        showNotification('warning', 'Please enter a valid API key');
+        return;
+    }
+    
+    saveSetting(keyName, 'api_keys');
+}
+
+function testApiKey(keyName) {
+    const value = document.getElementById(keyName).value;
+    const provider = keyName.replace('_api_key', '');
+    
+    if (!value || value.startsWith('●')) {
+        showNotification('warning', 'Please enter an API key first');
+        return;
+    }
+    
+    showProcessingModal('Testing API Key...', `Validating ${provider} API key...`);
+    
+    fetch('/validate_api_key', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            provider: provider,
+            api_key: value
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideProcessingModal();
+        
+        const statusIndicator = document.querySelector(`[onclick*="${keyName}"]`).closest('.setting-item').querySelector('.status-indicator');
+        if (data.valid) {
+            statusIndicator.className = 'status-indicator status-valid';
+            showNotification('success', data.message);
+        } else {
+            statusIndicator.className = 'status-indicator status-invalid';
+            showNotification('error', data.message);
+        }
+    })
+    .catch(error => {
+        hideProcessingModal();
+        showNotification('error', 'Error testing API key: ' + error.message);
+    });
+}
+
+function saveSetting(settingKey, category) {
+    const element = document.getElementById(settingKey);
+    let value = element.value;
+    let settingType = 'text';
+    
+    // Determine setting type
+    if (element.type === 'checkbox') {
+        value = element.checked;
+        settingType = 'boolean';
+    } else if (element.type === 'number') {
+        value = parseInt(value) || 0;
+        settingType = 'number';
+    }
+    
+    // Skip if masked value
+    if (typeof value === 'string' && value.startsWith('●')) {
+        showNotification('info', 'Setting already configured');
+        return;
+    }
+    
+    const isSensitive = category === 'api_keys' || settingKey.includes('key') || settingKey.includes('password');
+    
+    fetch('/update_setting', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            key: settingKey,
+            value: value,
+            type: settingType,
+            sensitive: isSensitive,
+            category: category
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showNotification('success', 'Setting saved successfully');
+            
+            // For API keys, mask the value after saving
+            if (isSensitive && typeof value === 'string' && value.length > 0) {
+                element.value = '●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●●';
+                element.type = 'password';
+            }
+        } else if (data.status === 'warning') {
+            showNotification('warning', data.message);
+        } else {
+            showNotification('error', data.message);
+        }
+    })
+    .catch(error => {
+        showNotification('error', 'Error saving setting: ' + error.message);
+    });
+}
+
+function showProcessingModal(title, message) {
+    document.getElementById('processingTitle').innerHTML = '<i class="fas fa-cog"></i> ' + title;
+    document.getElementById('processingMessage').textContent = message;
+    const modal = new bootstrap.Modal(document.getElementById('processingModal'));
+    modal.show();
+}
+
+function hideProcessingModal() {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('processingModal'));
+    if (modal) {
+        modal.hide();
+    }
+}
+
+function showNotification(type, message) {
+    const alertClass = {
+        'success': 'alert-success',
+        'error': 'alert-danger', 
+        'info': 'alert-info',
+        'warning': 'alert-warning'
+    }[type] || 'alert-info';
+    
+    const notification = document.createElement('div');
+    notification.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,39 @@
+# nested repos we don't want in this repo
+claude-code-hooks-mastery/
+context7/
+deepseek-mcp-server/
+grok-mcp/
+mcp-server-gemini/
+modelcontextprotocol/
+
+# Windows reserved filename and local artifacts
+nul
+summaries.db
+temp/
+highlights/
+highlights_data/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.env.*
+.ipynb_checkpoints/
+.mypy_cache/
+.pytest_cache/
+
+# Node (falls vorhanden)
+node_modules/
+
+# OS / Editor
+.DS_Store
+.vscode/
+.idea/
+
+static/downloads/
+static/audio/
+*.mp4
+*.mp3
+*.wav

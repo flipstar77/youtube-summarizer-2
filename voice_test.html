@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Voice Count Test</title>
+</head>
+<body>
+    <h1>Voice Dropdown Test</h1>
+    
+    <p><strong>Step 1:</strong> Check the voice dropdown below</p>
+    <select id="voiceSelect" style="width: 100%; padding: 10px;">
+        <option>Loading voices...</option>
+    </select>
+    
+    <p><strong>Step 2:</strong> Click this button to count voices</p>
+    <button onclick="countVoices()" style="padding: 10px; margin: 10px 0;">Count Voices</button>
+    
+    <div id="results"></div>
+    
+    <script>
+        function countVoices() {
+            const select = document.getElementById('voiceSelect');
+            const count = select.options.length;
+            
+            document.getElementById('results').innerHTML = `
+                <h3>Results:</h3>
+                <p><strong>Number of voice options:</strong> ${count}</p>
+                <p><strong>First few options:</strong></p>
+                <ul>
+                    ${Array.from(select.options).slice(0, 10).map(option => 
+                        `<li>${option.text}</li>`
+                    ).join('')}
+                </ul>
+                ${count > 10 ? `<p>...and ${count - 10} more</p>` : ''}
+            `;
+        }
+        
+        // Load voices from API
+        fetch('/voices')
+            .then(response => response.json())
+            .then(data => {
+                const select = document.getElementById('voiceSelect');
+                select.innerHTML = ''; // Clear loading message
+                
+                if (data.voices && data.voices.length > 0) {
+                    data.voices.forEach(voice => {
+                        const option = document.createElement('option');
+                        option.value = voice.voice_id;
+                        option.textContent = `${voice.name} - ${voice.description}`;
+                        select.appendChild(option);
+                    });
+                } else {
+                    select.innerHTML = '<option>No voices found</option>';
+                }
+            })
+            .catch(error => {
+                document.getElementById('voiceSelect').innerHTML = '<option>Error loading voices</option>';
+                console.error('Error loading voices:', error);
+            });
+    </script>
+</body>
+</html>

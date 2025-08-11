@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Dashboard - API Key Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.8;
+            font-size: 1.1rem;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .api-section {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            color: #2d3748;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .api-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .api-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .api-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+
+        .api-card h3 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .api-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+        }
+
+        .api-card input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .api-card input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .api-card .description {
+            font-size: 0.9rem;
+            color: #718096;
+            margin-top: 8px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #2d3748;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #38a169;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-weight: 500;
+            display: none;
+        }
+
+        .status.success {
+            background: #f0fff4;
+            border: 1px solid #9ae6b4;
+            color: #22543d;
+        }
+
+        .status.error {
+            background: #fed7d7;
+            border: 1px solid #feb2b2;
+            color: #742a2a;
+        }
+
+        .config-preview {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            display: none;
+        }
+
+        .info-section {
+            background: #ebf8ff;
+            border: 1px solid #90cdf4;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+
+        .info-section h3 {
+            color: #1e40af;
+            margin-bottom: 15px;
+        }
+
+        .info-list {
+            list-style: none;
+        }
+
+        .info-list li {
+            padding: 5px 0;
+            color: #1e40af;
+        }
+
+        .info-list li::before {
+            content: "✓ ";
+            color: #10b981;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .main-content {
+                padding: 20px;
+            }
+            
+            .api-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 MCP Dashboard</h1>
+            <p>Manage your Model Context Protocol server configurations</p>
+        </div>
+
+        <div class="main-content">
+            <div class="api-section">
+                <h2 class="section-title">API Keys Configuration</h2>
+                <div class="api-grid">
+                    <div class="api-card">
+                        <h3>
+                            <div class="api-icon" style="background: linear-gradient(45deg, #7c3aed, #a855f7);"></div>
+                            Perplexity AI
+                        </h3>
+                        <input type="password" id="perplexity-key" placeholder="Enter Perplexity API Key">
+                        <div class="description">Real-time web search and research capabilities</div>
+                    </div>
+
+                    <div class="api-card">
+                        <h3>
+                            <div class="api-icon" style="background: linear-gradient(45deg, #ef4444, #dc2626);"></div>
+                            DeepSeek AI
+                        </h3>
+                        <input type="password" id="deepseek-key" placeholder="Enter DeepSeek API Key">
+                        <div class="description">Advanced reasoning with R1 and V3 models</div>
+                    </div>
+
+                    <div class="api-card">
+                        <h3>
+                            <div class="api-icon" style="background: linear-gradient(45deg, #3b82f6, #1d4ed8);"></div>
+                            Google Gemini
+                        </h3>
+                        <input type="password" id="gemini-key" placeholder="Enter Gemini API Key">
+                        <div class="description">Gemini 2.5 with thinking capabilities and vision</div>
+                    </div>
+
+                    <div class="api-card">
+                        <h3>
+                            <div class="api-icon" style="background: linear-gradient(45deg, #000000, #374151);"></div>
+                            Grok AI (xAI)
+                        </h3>
+                        <input type="password" id="grok-key" placeholder="Enter Grok API Key">
+                        <div class="description">Grok 3 with reasoning and vision capabilities</div>
+                    </div>
+
+                    <div class="api-card">
+                        <h3>
+                            <div class="api-icon" style="background: linear-gradient(45deg, #f59e0b, #d97706);"></div>
+                            ElevenLabs
+                        </h3>
+                        <input type="password" id="elevenlabs-key" placeholder="Enter ElevenLabs API Key">
+                        <div class="description">Text-to-speech and voice synthesis</div>
+                    </div>
+                </div>
+
+                <div class="buttons">
+                    <button class="btn btn-primary" onclick="generateConfig()">
+                        🔧 Generate Configuration
+                    </button>
+                    <button class="btn btn-secondary" onclick="previewConfig()">
+                        👁️ Preview Config
+                    </button>
+                    <button class="btn btn-success" onclick="saveConfig()" style="display: none;" id="save-btn">
+                        💾 Save to Claude Desktop
+                    </button>
+                    <button class="btn btn-secondary" onclick="downloadConfig()" style="display: none;" id="download-btn">
+                        📥 Download Config
+                    </button>
+                </div>
+
+                <div id="status" class="status"></div>
+                <div id="config-preview" class="config-preview"></div>
+            </div>
+
+            <div class="info-section">
+                <h3>🎯 What This Dashboard Does</h3>
+                <ul class="info-list">
+                    <li>Manages API keys for all integrated MCP servers</li>
+                    <li>Generates Claude Desktop configuration automatically</li>
+                    <li>Supports Perplexity, DeepSeek, Gemini, Grok, and ElevenLabs</li>
+                    <li>Provides secure local storage and configuration export</li>
+                    <li>Cross-platform support (Windows, macOS, Linux)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentConfig = null;
+
+        function showStatus(message, type = 'success') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 5000);
+        }
+
+        function getApiKeys() {
+            return {
+                perplexity: document.getElementById('perplexity-key').value,
+                deepseek: document.getElementById('deepseek-key').value,
+                gemini: document.getElementById('gemini-key').value,
+                grok: document.getElementById('grok-key').value,
+                elevenlabs: document.getElementById('elevenlabs-key').value
+            };
+        }
+
+        async function generateConfig() {
+            const apiKeys = getApiKeys();
+            
+            // Check if at least one API key is provided
+            const hasAnyKey = Object.values(apiKeys).some(key => key.trim() !== '');
+            if (!hasAnyKey) {
+                showStatus('Please enter at least one API key', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/generate-config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ apiKeys })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to generate configuration');
+                }
+
+                const data = await response.json();
+                currentConfig = data.config;
+                
+                showStatus('Configuration generated successfully!');
+                document.getElementById('save-btn').style.display = 'inline-flex';
+                document.getElementById('download-btn').style.display = 'inline-flex';
+                
+            } catch (error) {
+                showStatus('Error generating configuration: ' + error.message, 'error');
+            }
+        }
+
+        function previewConfig() {
+            if (!currentConfig) {
+                showStatus('Please generate configuration first', 'error');
+                return;
+            }
+
+            const preview = document.getElementById('config-preview');
+            preview.textContent = JSON.stringify(currentConfig, null, 2);
+            preview.style.display = 'block';
+            showStatus('Configuration preview displayed');
+        }
+
+        async function saveConfig() {
+            if (!currentConfig) {
+                showStatus('Please generate configuration first', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/save-config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ config: currentConfig })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to save configuration');
+                }
+
+                const data = await response.json();
+                showStatus(`Configuration saved to: ${data.path}`);
+                
+            } catch (error) {
+                showStatus('Error saving configuration: ' + error.message, 'error');
+            }
+        }
+
+        function downloadConfig() {
+            if (!currentConfig) {
+                showStatus('Please generate configuration first', 'error');
+                return;
+            }
+
+            const blob = new Blob([JSON.stringify(currentConfig, null, 2)], { 
+                type: 'application/json' 
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'claude_desktop_config.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showStatus('Configuration downloaded successfully!');
+        }
+
+        // Load existing config on page load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch('/api/config');
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Platform:', data.platform);
+                    console.log('Config path:', data.configPath);
+                }
+            } catch (error) {
+                console.warn('Could not load existing config:', error);
+            }
+        });
+
+        // Toggle password visibility
+        document.addEventListener('DOMContentLoaded', function() {
+            const inputs = document.querySelectorAll('input[type="password"]');
+            inputs.forEach(input => {
+                input.addEventListener('dblclick', function() {
+                    this.type = this.type === 'password' ? 'text' : 'password';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

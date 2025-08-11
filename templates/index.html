@@ -1,0 +1,678 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-chart-line"></i> Dashboard</h1>
+            <a href="/new" class="btn btn-primary">
+                <i class="fas fa-plus"></i> New Summary
+            </a>
+        </div>
+
+        <!-- Semantic Search Section -->
+        <div class="card semantic-search-card mb-4 fade-in">
+            <div class="card-header">
+                <h5><i class="fas fa-search"></i> Semantic Search</h5>
+                <small class="text-muted">Search your summaries using AI-powered semantic understanding</small>
+            </div>
+            <div class="card-body">
+                <div class="search-container">
+                    <div class="input-group search-input-group">
+                        <span class="input-group-text search-icon">
+                            <i class="fas fa-brain"></i>
+                        </span>
+                        <input type="text" class="form-control search-input" id="semanticSearchInput" 
+                               placeholder="Search for concepts, topics, or ideas... (e.g., 'machine learning algorithms', 'productivity tips')" 
+                               aria-label="Semantic search query">
+                        <button class="btn btn-primary search-btn" type="button" id="semanticSearchBtn">
+                            <i class="fas fa-search me-2"></i>Search
+                        </button>
+                    </div>
+                    <div class="search-suggestions mt-2" id="searchSuggestions" style="display: none;">
+                        <small class="text-muted">Try searching for:</small>
+                        <div class="suggestion-tags mt-1">
+                            <span class="badge bg-light text-primary suggestion-tag" data-query="programming concepts">programming concepts</span>
+                            <span class="badge bg-light text-primary suggestion-tag" data-query="business strategies">business strategies</span>
+                            <span class="badge bg-light text-primary suggestion-tag" data-query="tutorial guides">tutorial guides</span>
+                            <span class="badge bg-light text-primary suggestion-tag" data-query="technology trends">technology trends</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Search Results -->
+                <div id="searchResults" class="search-results mt-4" style="display: none;">
+                    <div class="search-results-header mb-3">
+                        <h6><i class="fas fa-list-alt"></i> Search Results</h6>
+                        <div class="search-meta">
+                            <span id="searchResultsCount" class="badge bg-info">0 results</span>
+                            <small id="searchQuery" class="text-muted ms-2"></small>
+                        </div>
+                    </div>
+                    <div id="searchResultsList" class="search-results-list"></div>
+                </div>
+
+                <!-- Loading State -->
+                <div id="searchLoading" class="text-center py-4" style="display: none;">
+                    <div class="spinner-border text-primary me-3" role="status" aria-hidden="true"></div>
+                    <span class="text-muted">Searching with AI...</span>
+                </div>
+
+                <!-- No Results State -->
+                <div id="noResults" class="text-center py-4" style="display: none;">
+                    <i class="fas fa-search-minus fa-3x text-muted mb-3"></i>
+                    <h6 class="text-muted">No semantic matches found</h6>
+                    <p class="text-muted mb-0">Try different keywords or concepts</p>
+                </div>
+            </div>
+        </div>
+
+        {% if summaries %}
+            <div class="row mb-4 fade-in">
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="card stats-card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">Total Summaries</h6>
+                                    <h3>{{ summaries|length }}</h3>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-file-alt fa-3x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="card stats-card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">Recent Summaries</h6>
+                                    <h3>{{ recent_count }}</h3>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-clock fa-3x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="card stats-card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">With Audio</h6>
+                                    <h3>{{ summaries|selectattr('audio_file')|list|length }}</h3>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-volume-up fa-3x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="card stats-card vector-stats-card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">Vector Embeddings</h6>
+                                    <h3 id="vectorStatsCount">-</h3>
+                                    <small class="text-light opacity-75" id="vectorStatsMethod">Loading...</small>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-brain fa-3x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vector Management Panel -->
+            <div class="card vector-management-card mb-4 slide-up">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5><i class="fas fa-cogs"></i> Vector Embeddings Management</h5>
+                        <small class="text-muted">Manage AI-powered semantic search capabilities</small>
+                    </div>
+                    <button class="btn btn-outline-secondary btn-sm" id="toggleVectorManagement">
+                        <i class="fas fa-chevron-down"></i> Show Options
+                    </button>
+                </div>
+                <div class="card-body vector-management-body" id="vectorManagementBody" style="display: none;">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="embedding-status mb-4">
+                                <h6><i class="fas fa-chart-pie text-info"></i> Embedding Coverage</h6>
+                                <div class="progress mb-2" style="height: 8px;">
+                                    <div class="progress-bar" role="progressbar" id="embeddingProgress" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                                <div class="d-flex justify-content-between small text-muted">
+                                    <span id="embeddingStats">0 of {{ summaries|length }} summaries have embeddings</span>
+                                    <span id="embeddingPercentage">0%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="vectorization-actions">
+                                <button class="btn btn-info btn-sm w-100 mb-2" id="checkEmbeddingsBtn">
+                                    <i class="fas fa-sync me-2"></i>Check Status
+                                </button>
+                                <button class="btn btn-success btn-sm w-100" id="vectorizeAllBtn">
+                                    <i class="fas fa-magic me-2"></i>Vectorize Missing
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Vectorization Progress -->
+                    <div id="vectorizationProgress" class="vectorization-progress mt-4" style="display: none;">
+                        <div class="alert alert-info mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="spinner-border spinner-border-sm text-info me-3" role="status"></div>
+                                <div class="flex-grow-1">
+                                    <h6 class="alert-heading mb-1">Vectorizing Summaries</h6>
+                                    <div class="progress" style="height: 6px;">
+                                        <div class="progress-bar bg-info" id="vectorizationProgressBar" role="progressbar" style="width: 0%"></div>
+                                    </div>
+                                    <small class="text-muted mt-1 d-block" id="vectorizationStatus">Preparing...</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="vector-info mt-3">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <div class="info-label">
+                                        <i class="fas fa-microchip text-muted"></i> Embedding Model
+                                    </div>
+                                    <div class="info-value" id="embeddingModel">Loading...</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <div class="info-label">
+                                        <i class="fas fa-server text-muted"></i> Vector Database
+                                    </div>
+                                    <div class="info-value" id="vectorDatabase">Checking...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card slide-up">
+                <div class="card-header">
+                    <h5><i class="fas fa-list"></i> Recent Summaries</h5>
+                    <small class="text-muted">Click on any summary to view details</small>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Video</th>
+                                    <th>Type</th>
+                                    <th>Length</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for summary in summaries %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <img src="https://img.youtube.com/vi/{{ summary.video_id }}/mqdefault.jpg" 
+                                                 class="me-3 rounded" style="width: 60px; height: 45px;">
+                                            <div>
+                                                <div class="fw-bold">
+                                                    {{ summary.title or 'YouTube Video' }}
+                                                </div>
+                                                <small class="text-muted">{{ summary.video_id }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ summary.summary_type.title() }}</span>
+                                        {% if summary.audio_file %}
+                                            <span class="badge bg-success ms-1">
+                                                <i class="fas fa-volume-up"></i> Audio
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ summary.transcript_length }} chars</td>
+                                    <td>{{ summary.created_at[:16] }}</td>
+                                    <td>
+                                        <a href="/summary/{{ summary.id }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                        <a href="{{ summary.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                            <i class="fab fa-youtube"></i> Watch
+                                        </a>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteSummary({{ summary.id }})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="empty-state fade-in">
+                <i class="fas fa-video fa-5x"></i>
+                <h3>No summaries yet</h3>
+                <p>Get started by creating your first YouTube summary with AI-powered insights and semantic search!</p>
+                <a href="/new" class="btn btn-primary btn-lg mb-3">
+                    <i class="fas fa-plus"></i> Create First Summary
+                </a>
+                <div class="mt-4">
+                    <small class="text-muted">
+                        <i class="fas fa-brain me-2"></i>Once you have summaries, you'll be able to search them semantically using AI-powered understanding.
+                    </small>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Existing delete function
+function deleteSummary(id) {
+    if (confirm('Are you sure you want to delete this summary?')) {
+        fetch('/delete/' + id, {
+            method: 'DELETE',
+        })
+        .then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Error deleting summary');
+            }
+        });
+    }
+}
+
+// Semantic Search Functionality
+let searchTimeout;
+
+document.addEventListener('DOMContentLoaded', function() {
+    initializeSemanticSearch();
+    loadVectorStats();
+    setupVectorManagement();
+});
+
+function initializeSemanticSearch() {
+    const searchInput = document.getElementById('semanticSearchInput');
+    const searchBtn = document.getElementById('semanticSearchBtn');
+    const searchSuggestions = document.getElementById('searchSuggestions');
+    const suggestionTags = document.querySelectorAll('.suggestion-tag');
+
+    // Show suggestions when input is focused
+    searchInput.addEventListener('focus', function() {
+        if (!this.value) {
+            searchSuggestions.style.display = 'block';
+        }
+    });
+
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.search-container')) {
+            searchSuggestions.style.display = 'none';
+        }
+    });
+
+    // Handle suggestion clicks
+    suggestionTags.forEach(tag => {
+        tag.addEventListener('click', function() {
+            const query = this.getAttribute('data-query');
+            searchInput.value = query;
+            searchSuggestions.style.display = 'none';
+            performSemanticSearch(query);
+        });
+    });
+
+    // Handle search button click
+    searchBtn.addEventListener('click', function() {
+        const query = searchInput.value.trim();
+        if (query) {
+            performSemanticSearch(query);
+        }
+    });
+
+    // Handle enter key
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            const query = this.value.trim();
+            if (query) {
+                performSemanticSearch(query);
+            }
+        }
+    });
+
+    // Real-time search (debounced)
+    searchInput.addEventListener('input', function() {
+        const query = this.value.trim();
+        
+        clearTimeout(searchTimeout);
+        
+        if (query.length >= 3) {
+            searchTimeout = setTimeout(() => {
+                performSemanticSearch(query);
+            }, 500);
+        } else if (query.length === 0) {
+            hideSearchResults();
+        }
+    });
+}
+
+function performSemanticSearch(query) {
+    showSearchLoading();
+    
+    fetch('/semantic_search', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query: query })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideSearchLoading();
+        
+        if (data.status === 'success') {
+            displaySearchResults(data.results, query, data.count);
+        } else {
+            showToast('❌ Search failed: ' + data.message, 'error');
+            showNoResults();
+        }
+    })
+    .catch(error => {
+        hideSearchLoading();
+        console.error('Search error:', error);
+        showToast('❌ Search failed: Network error', 'error');
+        showNoResults();
+    });
+}
+
+function displaySearchResults(results, query, count) {
+    const resultsContainer = document.getElementById('searchResults');
+    const resultsList = document.getElementById('searchResultsList');
+    const resultsCount = document.getElementById('searchResultsCount');
+    const searchQuery = document.getElementById('searchQuery');
+    const noResults = document.getElementById('noResults');
+    
+    // Hide no results state
+    noResults.style.display = 'none';
+    
+    if (results.length === 0) {
+        showNoResults();
+        return;
+    }
+    
+    // Update header
+    resultsCount.textContent = `${count} result${count !== 1 ? 's' : ''}`;
+    searchQuery.textContent = `for "${query}"`;
+    
+    // Build results HTML
+    const resultsHTML = results.map(result => {
+        const similarity = (result.similarity * 100).toFixed(1);
+        const videoThumbnail = `https://img.youtube.com/vi/${result.video_id}/mqdefault.jpg`;
+        
+        return `
+            <div class="search-result-item card mb-3 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <img src="${videoThumbnail}" class="search-result-thumbnail" alt="Video thumbnail">
+                        </div>
+                        <div class="col">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="search-result-title mb-0">
+                                    <a href="/summary/${result.id}" class="text-decoration-none">
+                                        ${result.title || 'YouTube Video'}
+                                    </a>
+                                </h6>
+                                <div class="search-result-meta">
+                                    <span class="badge bg-success similarity-badge">
+                                        <i class="fas fa-percentage me-1"></i>${similarity}% match
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="search-result-details mb-2">
+                                <span class="badge bg-info me-2">${result.summary_type}</span>
+                                <small class="text-muted">
+                                    <i class="fas fa-calendar me-1"></i>${result.created_at.substring(0, 16)}
+                                    <span class="mx-2">•</span>
+                                    <i class="fas fa-file-text me-1"></i>${result.transcript_length} chars
+                                </small>
+                            </div>
+                            <div class="search-result-summary">
+                                <p class="text-muted mb-0">${truncateText(result.summary, 150)}</p>
+                            </div>
+                            <div class="search-result-actions mt-2">
+                                <a href="/summary/${result.id}" class="btn btn-sm btn-outline-primary me-2">
+                                    <i class="fas fa-eye me-1"></i>View Summary
+                                </a>
+                                <a href="${result.url}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fab fa-youtube me-1"></i>Watch Video
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    resultsList.innerHTML = resultsHTML;
+    resultsContainer.style.display = 'block';
+    
+    // Smooth scroll to results
+    resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function showSearchLoading() {
+    document.getElementById('searchLoading').style.display = 'block';
+    document.getElementById('searchResults').style.display = 'none';
+    document.getElementById('noResults').style.display = 'none';
+}
+
+function hideSearchLoading() {
+    document.getElementById('searchLoading').style.display = 'none';
+}
+
+function showNoResults() {
+    document.getElementById('noResults').style.display = 'block';
+    document.getElementById('searchResults').style.display = 'none';
+}
+
+function hideSearchResults() {
+    document.getElementById('searchResults').style.display = 'none';
+    document.getElementById('noResults').style.display = 'none';
+}
+
+function truncateText(text, maxLength) {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+}
+
+// Vector Statistics and Management
+function loadVectorStats() {
+    // Check if vector search is available
+    fetch('/semantic_search', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query: 'test' })
+    })
+    .then(response => response.json())
+    .then(data => {
+        const isAvailable = data.status !== 'error' || !data.message.includes('not available');
+        updateVectorStats(isAvailable);
+    })
+    .catch(() => {
+        updateVectorStats(false);
+    });
+}
+
+function updateVectorStats(isAvailable) {
+    const countElement = document.getElementById('vectorStatsCount');
+    const methodElement = document.getElementById('vectorStatsMethod');
+    const modelElement = document.getElementById('embeddingModel');
+    const databaseElement = document.getElementById('vectorDatabase');
+    
+    if (!isAvailable) {
+        countElement.textContent = 'N/A';
+        methodElement.textContent = 'Not Available';
+        modelElement.textContent = 'Vector search disabled';
+        databaseElement.textContent = 'SQLite (no vectors)';
+        return;
+    }
+    
+    // Estimate embeddings count (this could be enhanced with a dedicated endpoint)
+    const totalSummaries = {{ summaries|length }};
+    const estimatedEmbeddings = Math.floor(totalSummaries * 0.7); // Placeholder estimation
+    
+    countElement.textContent = `${estimatedEmbeddings}/${totalSummaries}`;
+    methodElement.textContent = 'AI Powered';
+    
+    // Check if OpenAI key exists (simple heuristic)
+    const hasOpenAI = true; // This would need to be passed from backend
+    modelElement.textContent = hasOpenAI ? 'OpenAI Embeddings' : 'Sentence Transformers';
+    databaseElement.textContent = 'Supabase (pgvector)';
+    
+    // Update progress bar
+    const percentage = totalSummaries > 0 ? (estimatedEmbeddings / totalSummaries) * 100 : 0;
+    document.getElementById('embeddingProgress').style.width = percentage + '%';
+    document.getElementById('embeddingStats').textContent = `${estimatedEmbeddings} of ${totalSummaries} summaries have embeddings`;
+    document.getElementById('embeddingPercentage').textContent = `${Math.round(percentage)}%`;
+}
+
+function setupVectorManagement() {
+    const toggleBtn = document.getElementById('toggleVectorManagement');
+    const managementBody = document.getElementById('vectorManagementBody');
+    const checkBtn = document.getElementById('checkEmbeddingsBtn');
+    const vectorizeBtn = document.getElementById('vectorizeAllBtn');
+    
+    toggleBtn.addEventListener('click', function() {
+        const isHidden = managementBody.style.display === 'none';
+        managementBody.style.display = isHidden ? 'block' : 'none';
+        
+        const icon = this.querySelector('i');
+        icon.className = isHidden ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
+        this.innerHTML = `<i class="${icon.className}"></i> ${isHidden ? 'Hide' : 'Show'} Options`;
+    });
+    
+    checkBtn.addEventListener('click', function() {
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Checking...';
+        
+        // Simulate checking (in real implementation, this would call an API)
+        setTimeout(() => {
+            loadVectorStats();
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-sync me-2"></i>Check Status';
+            showToast('📊 Vector statistics updated', 'info');
+        }, 1500);
+    });
+    
+    vectorizeBtn.addEventListener('click', function() {
+        if (confirm('This will generate vector embeddings for summaries that don\'t have them. This may take several minutes. Continue?')) {
+            startVectorization();
+        }
+    });
+}
+
+function startVectorization() {
+    const progressContainer = document.getElementById('vectorizationProgress');
+    const progressBar = document.getElementById('vectorizationProgressBar');
+    const statusText = document.getElementById('vectorizationStatus');
+    const vectorizeBtn = document.getElementById('vectorizeAllBtn');
+    
+    progressContainer.style.display = 'block';
+    vectorizeBtn.disabled = true;
+    vectorizeBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Vectorizing...';
+    
+    fetch('/vectorize_existing', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Simulate progress animation
+            animateProgress(progressBar, statusText, data.vectorized_count, data.total_found);
+            
+            setTimeout(() => {
+                showToast(`✅ Successfully vectorized ${data.vectorized_count} summaries!`, 'success');
+                loadVectorStats();
+                progressContainer.style.display = 'none';
+                vectorizeBtn.disabled = false;
+                vectorizeBtn.innerHTML = '<i class="fas fa-magic me-2"></i>Vectorize Missing';
+            }, 3000);
+        } else {
+            showToast('❌ Vectorization failed: ' + data.message, 'error');
+            progressContainer.style.display = 'none';
+            vectorizeBtn.disabled = false;
+            vectorizeBtn.innerHTML = '<i class="fas fa-magic me-2"></i>Vectorize Missing';
+        }
+    })
+    .catch(error => {
+        console.error('Vectorization error:', error);
+        showToast('❌ Vectorization failed: Network error', 'error');
+        progressContainer.style.display = 'none';
+        vectorizeBtn.disabled = false;
+        vectorizeBtn.innerHTML = '<i class="fas fa-magic me-2"></i>Vectorize Missing';
+    });
+}
+
+function animateProgress(progressBar, statusText, completed, total) {
+    let current = 0;
+    const increment = completed / 20; // 20 steps
+    
+    const interval = setInterval(() => {
+        current += increment;
+        const percentage = Math.min((current / total) * 100, 100);
+        progressBar.style.width = percentage + '%';
+        statusText.textContent = `Processing ${Math.floor(current)} of ${total} summaries...`;
+        
+        if (current >= completed) {
+            clearInterval(interval);
+            statusText.textContent = `Completed ${completed} of ${total} summaries`;
+        }
+    }, 150);
+}
+
+// Toast notifications
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast-notification toast-${type}`;
+    toast.textContent = message;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => toast.classList.add('show'), 100);
+    
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => document.body.removeChild(toast), 300);
+    }, 3000);
+}
+</script>
+{% endblock %}

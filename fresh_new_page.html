@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Summary - YouTube Summarizer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/style.css?v=20250810_v2" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fab fa-youtube text-danger"></i>
+                YouTube Summarizer
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+                <a class="nav-link" href="/new">
+                    <i class="fas fa-plus"></i> New Summary
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        
+            
+        
+
+        
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card fade-in">
+            <div class="card-header">
+                <h4><i class="fas fa-magic text-primary"></i> Create New Summary</h4>
+                <p class="mb-0 text-muted">Transform any YouTube video into an intelligent summary</p>
+            </div>
+            <div class="card-body">
+                <form id="summaryForm" method="POST">
+                    <div class="mb-4">
+                        <label for="url" class="form-label">
+                            <i class="fab fa-youtube text-danger"></i> YouTube URL
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0">
+                                <i class="fas fa-link text-muted"></i>
+                            </span>
+                            <input type="url" class="form-control border-start-0" id="url" name="url" 
+                                   placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ" required>
+                        </div>
+                        <div class="form-text mt-2">
+                            <i class="fas fa-info-circle"></i> Paste any YouTube video URL to get started
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="summary_type" class="form-label">
+                            <i class="fas fa-list-alt text-info"></i> Summary Type
+                        </label>
+                        <select class="form-select" id="summary_type" name="summary_type">
+                            <option value="detailed" selected>📋 Detailed Summary - Comprehensive analysis</option>
+                            <option value="brief">⚡ Brief Summary - Quick overview</option>
+                            <option value="bullet">🎯 Bullet Points - Key takeaways</option>
+                            <option value="tutorial">📖 Tutorial Guide - Step-by-step instructions</option>
+                            <option value="professional">🎯 Professional Summary - Structured analysis</option>
+                            <option value="custom">✨ Custom Prompt - Your own instructions</option>
+                        </select>
+                        <div class="form-text mt-2">
+                            Choose the level of detail for your summary
+                        </div>
+                    </div>
+
+                    <div class="mb-4" id="customPromptSection" style="display: none;">
+                        <label for="custom_prompt" class="form-label">
+                            <i class="fas fa-edit text-primary"></i> Custom Prompt
+                        </label>
+                        <textarea class="form-control" id="custom_prompt" name="custom_prompt" rows="4" 
+                                  placeholder="Enter your custom instructions for the AI...
+
+Example:
+- Summarize this in a specific format
+- Focus on particular aspects
+- Extract specific information
+- Use a particular writing style"></textarea>
+                        <div class="form-text mt-2">
+                            <i class="fas fa-lightbulb text-warning"></i> 
+                            Write detailed instructions for how you want the AI to process the transcript. 
+                            The AI will use your instructions to create a custom summary.
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="language" class="form-label">
+                            <i class="fas fa-globe text-success"></i> Preferred Language
+                        </label>
+                        <select class="form-select" id="language" name="language">
+                            <option value="en" selected>🇺🇸 English</option>
+                            <option value="es">🇪🇸 Spanish</option>
+                            <option value="fr">🇫🇷 French</option>
+                            <option value="de">🇩🇪 German</option>
+                            <option value="it">🇮🇹 Italian</option>
+                            <option value="pt">🇵🇹 Portuguese</option>
+                            <option value="ru">🇷🇺 Russian</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">
+                            <i class="fas fa-robot text-purple"></i> AI Provider
+                        </label>
+                        <div class="card bg-gradient border-0" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                            <div class="card-body p-3 text-white">
+                                <div class="row align-items-center">
+                                    <div class="col-md-8">
+                                        <div class="mb-3">
+                                            <select class="form-select" id="ai_provider" name="ai_provider">
+                                                <option value="openai" selected>🤖 OpenAI - GPT Models</option>
+                                                <!-- Dynamic options will be loaded here -->
+                                            </select>
+                                        </div>
+                                        <div class="mb-0">
+                                            <select class="form-select" id="ai_model" name="ai_model">
+                                                <option value="">Auto-select best model</option>
+                                            </select>
+                                            <small class="text-white-50 d-block mt-1">Advanced: Choose specific model (optional)</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 text-center">
+                                        <div class="ai-status-indicator">
+                                            <i class="fas fa-circle text-success" id="aiStatusIcon"></i>
+                                            <div class="small" id="aiStatusText">Ready</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-text">
+                            <i class="fas fa-lightbulb text-warning"></i> 
+                            Choose your preferred AI provider. Each offers unique strengths:
+                            <strong>OpenAI</strong> (balanced), <strong>Perplexity</strong> (web-aware), 
+                            <strong>DeepSeek</strong> (reasoning), <strong>Gemini</strong> (advanced), 
+                            <strong>Grok</strong> (creative)
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="card bg-light border-0">
+                            <div class="card-body p-3">
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" id="generate_audio" name="generate_audio">
+                                    <label class="form-check-label" for="generate_audio">
+                                        <strong><i class="fas fa-volume-up text-primary"></i> Generate Audio Version</strong>
+                                        <small class="text-muted d-block mt-1">Create a high-quality spoken version using AI voice synthesis</small>
+                                    </label>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="generate_srt" name="generate_srt">
+                                    <label class="form-check-label" for="generate_srt">
+                                        <strong><i class="fas fa-closed-captioning text-info"></i> Generate SRT Subtitles</strong>
+                                        <small class="text-muted d-block mt-1">Create subtitle file for video accessibility and multi-language support</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3" id="voiceSelection" style="display: none;">
+                        <label for="voice_id" class="form-label">
+                            Voice Selection
+                            <a href="https://try.elevenlabs.io/6qmgmbs0b5oi" target="_blank" class="badge bg-info text-decoration-none ms-2">
+                                <i class="fas fa-external-link-alt"></i> Powered by ElevenLabs
+                            </a>
+                        </label>
+                        <select class="form-select" id="voice_id" name="voice_id">
+                            
+                                
+                                    <option value="9BWtsMINqrJLrRacOk9x">Aria - A middle-aged female with an African-American accent. Calm with a hint of rasp.</option>
+                                
+                                    <option value="EXAVITQu4vr4xnSDxMaL">Sarah - Young adult woman with a confident and warm, mature quality and a reassuring, professional tone.</option>
+                                
+                                    <option value="FGY2WhTYpPnrIDTdsKH5">Laura - This young adult female voice delivers sunny enthusiasm with a quirky attitude.</option>
+                                
+                                    <option value="IKne3meq5aSn9XLyUdCD">Charlie - A young Australian male with a confident and energetic voice.</option>
+                                
+                                    <option value="JBFqnCBsd6RMkjVDRZzb">George - Warm resonance that instantly captivates listeners.</option>
+                                
+                                    <option value="N2lVS1w4EtoT3dr4eOWO">Callum - Deceptively gravelly, yet unsettling edge.</option>
+                                
+                                    <option value="SAz9YHcvj6GT2YYXdXww">River - A relaxed, neutral voice ready for narrations or conversational projects.</option>
+                                
+                                    <option value="TX3LPaxmHKxFdv7VOQHJ">Liam - A young adult with energy and warmth - suitable for reels and shorts.</option>
+                                
+                                    <option value="XB0fDUnXU5powFXDhCwa">Charlotte - Sensual and raspy, she&#39;s ready to voice your temptress in video games.</option>
+                                
+                                    <option value="Xb7hH8MSUJpSbSDYk0k2">Alice - Clear and engaging, friendly woman with a British accent suitable for e-learning.</option>
+                                
+                                    <option value="XrExE9yKIg1WjnnlVkGX">Matilda - A professional woman with a pleasing alto pitch. Suitable for many use cases.</option>
+                                
+                                    <option value="bIHbv24MWmeRgasZH58o">Will - Conversational and laid back.</option>
+                                
+                                    <option value="cgSgspJ2msm6clMCkdW9">Jessica - Young and popular, this playful American female voice is perfect for trendy content.</option>
+                                
+                                    <option value="cjVigY5qzO86Huf0OWal">Eric - A smooth tenor pitch from a man in his 40s - perfect for agentic use cases.</option>
+                                
+                                    <option value="iP95p4xoKVk53GoZ742B">Chris - Natural and real, this down-to-earth voice is great across many use-cases.</option>
+                                
+                                    <option value="nPczCjzI2devNBz1zQrb">Brian - Middle-aged man with a resonant and comforting tone. Great for narrations and advertisements.</option>
+                                
+                                    <option value="onwK4e9ZLuTAKqWW03F9">Daniel - A strong voice perfect for delivering a professional broadcast or news story.</option>
+                                
+                                    <option value="pFZP5JQG7iQjIQuC4Bku">Lily - Velvety British female voice delivers news and narrations with warmth and clarity.</option>
+                                
+                                    <option value="pqHfZKP75CvOlQylNhV4">Bill - Friendly and comforting voice ready to narrate your stories.</option>
+                                
+                                    <option value="3SF4rB1fGBMXU9xRM7pz">Evil Guy Oxley - Middle-aged male voice. This character carries an air of quiet menace. With a touch of eccentricity and a distorted perspective, they elicit a sense of intrigue rather than outright fear. Their unpredictability makes them a compelling figure.</option>
+                                
+                                    <option value="4rbdlL8Eqnx7EDu49O8m">Maria - autoritative young girl - An intense young American woman&#39;s voice. Great for reading the news.</option>
+                                
+                                    <option value="AC3orywkRiLNiiwTehjW">Gabriella - deep - A deep and husky voice with a slighly sassy tone.</option>
+                                
+                                    <option value="ApsbCjXt5HguctE80a0i">Constantino - Deep, slightly gruff American male. Conversational yet authoritative. Reminiscient of a fireside storyteller. Perfect for news, storytelling, narration. Young adult. </option>
+                                
+                                    <option value="ImPIGI65IrGRMZxQEW9a">Dave - deep and gruff - A very deep and rumbly voice. Perfect for commercials and advertisement.</option>
+                                
+                                    <option value="LavGSQfK0kNNuyLCerk4">Theresa - Trained on over 900 characters with emotional dialogue - </option>
+                                
+                                    <option value="R3ED4Tssux5BqJmF9Nor">Raymond - A old-timey voice with a casual tone.</option>
+                                
+                                    <option value="SVPUfiN83qygMRPKJyMh">Laura - mature - A mature voice good for news narration</option>
+                                
+                                    <option value="dpe9OBKZEK1BHfVjZ1n2">Long Storyteller - Middle aged American-Irish-British male with a clear, cute &amp; confident voice. Suitable for long stories, movie recaps.</option>
+                                
+                                    <option value="g7U2xSRWEvcq4VsikrBT">epic - </option>
+                                
+                                    <option value="hAbqrNXtVrhceCLOKgwy">quotes - good for video games</option>
+                                
+                                    <option value="qNkzaJoHLLdpvgh5tISm">Carter the Mountain King - Middle-aged American male. Voice is rich, smooth, &amp; rugged. Each syllable lingers on the palate, leaving a tantalizing trail of sensation in its wake.
+Deep and sonorous, this Voice of the Mountain resonates... sending vibrations that stir the senses and beckon you closer, promising secrets and fulfilling them.</option>
+                                
+                                    <option value="tTh2mQHNgNqEUpPVESoi">Arnold - Courageous Valiant - An old british man with a seasoned and cultured voice. Perfect for theatrical voice over work.</option>
+                                
+                            
+                        </select>
+                    </div>
+
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                            <i class="fas fa-magic"></i> Generate Summary
+                            <small class="d-block mt-1 opacity-75">This may take 30-60 seconds</small>
+                        </button>
+                        <a href="/" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Dashboard
+                        </a>
+                    </div>
+                </form>
+
+                <div id="progressDiv" class="mt-4" style="display: none;">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h6><i class="fas fa-spinner fa-spin"></i> Processing...</h6>
+                            <div class="progress mb-2">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <div id="statusText">Initializing...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+<script>
+// Load available AI providers on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadAIProviders();
+});
+
+function loadAIProviders() {
+    fetch('/ai_providers')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                populateProviderSelect(data.providers, data.default);
+            } else {
+                console.warn('Could not load AI providers:', data.message);
+            }
+        })
+        .catch(error => {
+            console.warn('Error loading AI providers:', error);
+        });
+}
+
+function populateProviderSelect(providers, defaultProvider) {
+    const providerSelect = document.getElementById('ai_provider');
+    const modelSelect = document.getElementById('ai_model');
+    
+    // Clear existing options
+    providerSelect.innerHTML = '';
+    
+    // Add provider options
+    const providerNames = {
+        'openai': '🤖 OpenAI - GPT Models',
+        'perplexity': '🔍 Perplexity - Web-Aware AI',
+        'deepseek': '🧠 DeepSeek - Advanced Reasoning',
+        'gemini': '💎 Google Gemini - Latest AI',
+        'grok': '⚡ Grok - xAI\'s Creative Model'
+    };
+    
+    Object.keys(providers).forEach(provider => {
+        const option = document.createElement('option');
+        option.value = provider;
+        option.textContent = providerNames[provider] || `${provider.toUpperCase()} AI`;
+        if (provider === defaultProvider) {
+            option.selected = true;
+        }
+        providerSelect.appendChild(option);
+    });
+    
+    // Handle provider change
+    providerSelect.addEventListener('change', function() {
+        updateModelOptions(providers, this.value);
+        updateAIStatus(this.value);
+    });
+    
+    // Initialize with default provider
+    if (defaultProvider && providers[defaultProvider]) {
+        updateModelOptions(providers, defaultProvider);
+        updateAIStatus(defaultProvider);
+    }
+}
+
+function updateModelOptions(providers, selectedProvider) {
+    const modelSelect = document.getElementById('ai_model');
+    const models = providers[selectedProvider]?.models || [];
+    
+    // Clear existing options
+    modelSelect.innerHTML = '<option value="">Auto-select best model</option>';
+    
+    // Add model options
+    models.forEach(model => {
+        const option = document.createElement('option');
+        option.value = model;
+        option.textContent = model;
+        modelSelect.appendChild(option);
+    });
+}
+
+function updateAIStatus(provider) {
+    const statusIcon = document.getElementById('aiStatusIcon');
+    const statusText = document.getElementById('aiStatusText');
+    
+    const statuses = {
+        'openai': { icon: 'text-success', text: 'Ready' },
+        'perplexity': { icon: 'text-info', text: 'Web Search' },
+        'deepseek': { icon: 'text-primary', text: 'Reasoning' },
+        'gemini': { icon: 'text-warning', text: 'Advanced' },
+        'grok': { icon: 'text-danger', text: 'Creative' }
+    };
+    
+    const status = statuses[provider] || { icon: 'text-secondary', text: 'Available' };
+    statusIcon.className = `fas fa-circle ${status.icon}`;
+    statusText.textContent = status.text;
+}
+
+// Show/hide voice selection based on audio generation checkbox
+document.getElementById('generate_audio').addEventListener('change', function() {
+    const voiceSelection = document.getElementById('voiceSelection');
+    if (this.checked) {
+        voiceSelection.style.display = 'block';
+    } else {
+        voiceSelection.style.display = 'none';
+    }
+});
+
+// Show/hide custom prompt section based on summary type
+document.getElementById('summary_type').addEventListener('change', function() {
+    const customPromptSection = document.getElementById('customPromptSection');
+    const customPromptTextarea = document.getElementById('custom_prompt');
+    
+    if (this.value === 'custom') {
+        customPromptSection.style.display = 'block';
+        customPromptTextarea.required = true;
+    } else {
+        customPromptSection.style.display = 'none';
+        customPromptTextarea.required = false;
+        customPromptTextarea.value = '';
+    }
+});
+
+document.getElementById('summaryForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const submitBtn = document.getElementById('submitBtn');
+    const progressDiv = document.getElementById('progressDiv');
+    const statusText = document.getElementById('statusText');
+    const progressBar = document.querySelector('.progress-bar');
+    
+    // Show progress and disable form
+    submitBtn.disabled = true;
+    progressDiv.style.display = 'block';
+    
+    const formData = new FormData(this);
+    
+    // Simulate progress updates
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+        progress += Math.random() * 20;
+        if (progress > 90) progress = 90;
+        progressBar.style.width = progress + '%';
+        
+        if (progress < 30) {
+            statusText.textContent = 'Extracting transcript...';
+        } else if (progress < 70) {
+            statusText.textContent = 'Generating summary...';
+        } else {
+            statusText.textContent = 'Finalizing...';
+        }
+    }, 1000);
+    
+    // Create a timeout for very long processing
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+        controller.abort();
+    }, 300000); // 5 minute timeout
+    
+    fetch('/new', {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal
+    })
+    .then(response => {
+        clearTimeout(timeoutId);
+        clearInterval(progressInterval);
+        progressBar.style.width = '100%';
+        
+        if (response.ok) {
+            statusText.textContent = 'Complete! Redirecting...';
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1000);
+        } else {
+            return response.text().then(text => {
+                throw new Error(text);
+            });
+        }
+    })
+    .catch(error => {
+        clearTimeout(timeoutId);
+        clearInterval(progressInterval);
+        progressDiv.style.display = 'none';
+        submitBtn.disabled = false;
+        
+        if (error.name === 'AbortError') {
+            alert('Request timed out. The video might be too long. Please try a shorter video or try again later.');
+        } else {
+            alert('Error: ' + error.message);
+        }
+    });
+});
+</script>
+
+</body>
+</html>

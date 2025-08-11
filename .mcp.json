@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "command": "node",
+      "args": [
+        "D:\\mcp\\supabase-mcp\\packages\\mcp-server-supabase\\dist\\transports\\stdio.cjs",
+        "--read-only"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "sbp_98b10efca90050a00514f9d985cfa25ab770fb60",
+        "SUPABASE_PROJECT_REF": "jhvnzkfqwzimvbwtjurt"
+      }
+    }
+  }
+}

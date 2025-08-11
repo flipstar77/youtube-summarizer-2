@@ -1,0 +1,765 @@
+{% extends "base.html" %}
+
+{% block title %}{{ summary.title or 'Summary' }} - YouTube Summarizer{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <!-- Header Section with Enhanced Design -->
+        <div class="d-flex justify-content-between align-items-start mb-4 fade-in">
+            <div class="header-content">
+                <h1 class="mb-2">
+                    <i class="fas fa-file-alt text-primary"></i> 
+                    {{ summary.title or 'YouTube Video Summary' }}
+                </h1>
+                <p class="text-muted fs-5 mb-0">
+                    <i class="fas fa-calendar-alt me-2"></i>
+                    Created {{ summary.created_at[:16] }}
+                    <span class="mx-2">•</span>
+                    <i class="fas fa-eye me-2"></i>
+                    {{ summary.summary_type.title() }} Summary
+                </p>
+            </div>
+            <div class="action-buttons">
+                <a href="{{ summary.url }}" target="_blank" class="btn btn-outline-danger btn-lg me-2">
+                    <i class="fab fa-youtube"></i> Watch Video
+                </a>
+                <a href="/" class="btn btn-outline-secondary btn-lg">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Video Information Card -->
+            <div class="col-lg-4">
+                <div class="card video-info-card slide-up">
+                    <!-- Enhanced Video Thumbnail with Overlay -->
+                    <div class="video-thumbnail-container position-relative">
+                        <img src="https://img.youtube.com/vi/{{ summary.video_id }}/maxresdefault.jpg" 
+                             class="card-img-top video-thumbnail" alt="Video Thumbnail">
+                        <div class="thumbnail-overlay">
+                            <a href="{{ summary.url }}" target="_blank" 
+                               class="play-button">
+                                <i class="fas fa-play"></i>
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="card-header-inline mb-4">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-info-circle text-info"></i> 
+                                Video Details
+                            </h5>
+                        </div>
+
+                        <!-- Enhanced Info Grid -->
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">
+                                    <i class="fas fa-tag text-muted"></i> Video ID
+                                </div>
+                                <div class="info-value">
+                                    <code>{{ summary.video_id }}</code>
+                                </div>
+                            </div>
+
+                            <div class="info-item">
+                                <div class="info-label">
+                                    <i class="fas fa-list-alt text-muted"></i> Summary Type
+                                </div>
+                                <div class="info-value">
+                                    <span class="badge bg-info fs-6">
+                                        {{ summary.summary_type.title() }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="info-item">
+                                <div class="info-label">
+                                    <i class="fas fa-file-text text-muted"></i> Transcript Length
+                                </div>
+                                <div class="info-value">
+                                    <span class="fw-semibold">{{ summary.transcript_length }}</span> characters
+                                </div>
+                            </div>
+
+                            <div class="info-item">
+                                <div class="info-label">
+                                    <i class="fas fa-clock text-muted"></i> Created
+                                </div>
+                                <div class="info-value">
+                                    {{ summary.created_at[:16] }}
+                                </div>
+                            </div>
+
+                            {% if summary.audio_file %}
+                            <div class="info-item">
+                                <div class="info-label">
+                                    <i class="fas fa-volume-up text-muted"></i> Audio Status
+                                </div>
+                                <div class="info-value">
+                                    <span class="badge bg-success fs-6">
+                                        <i class="fas fa-check-circle"></i> Available
+                                    </span>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Enhanced Audio Section -->
+                        {% if summary.audio_file %}
+                            <div class="audio-player-section mb-4">
+                                <div class="audio-card">
+                                    <div class="audio-header">
+                                        <h6 class="mb-2">
+                                            <i class="fas fa-headphones text-primary"></i> 
+                                            Audio Summary
+                                        </h6>
+                                        <a href="https://try.elevenlabs.io/6qmgmbs0b5oi" target="_blank" 
+                                           class="badge bg-info text-decoration-none">
+                                            <i class="fas fa-external-link-alt"></i> Powered by ElevenLabs
+                                        </a>
+                                    </div>
+                                    <div class="audio-player-container">
+                                        <audio controls class="modern-audio-player" controlslist="nodownload">
+                                            <source src="/static/{{ summary.audio_file }}" type="audio/mpeg">
+                                            <div class="audio-fallback">
+                                                <i class="fas fa-exclamation-triangle text-warning"></i>
+                                                Your browser does not support the audio element.
+                                            </div>
+                                        </audio>
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="audio-generation-section mb-4">
+                                <button class="btn btn-outline-info btn-lg w-100" onclick="generateAudio()" id="generateAudioBtn">
+                                    <i class="fas fa-magic me-2"></i> 
+                                    Generate Audio Version
+                                    <small class="d-block mt-1 opacity-75">Transform text to speech with AI</small>
+                                </button>
+                                
+                                <div id="audioGeneration" class="audio-generation-panel" style="display: none;">
+                                    <div class="card border-0 bg-light">
+                                        <div class="card-body">
+                                            <h6 class="card-title">
+                                                <i class="fas fa-microphone-alt text-info"></i> 
+                                                Select Voice
+                                            </h6>
+                                            <select class="form-select mb-3" id="voiceSelect">
+                                                {% if voices %}
+                                                    {% for voice in voices %}
+                                                        <option value="{{ voice.voice_id }}">
+                                                            🎙️ {{ voice.name }} - {{ voice.description }}
+                                                        </option>
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <option value="21m00Tcm4TlvDq8ikWAM">
+                                                        🎙️ Rachel - American female, calm and clear
+                                                    </option>
+                                                    <option value="AZnzlk1XvdvUeBnXmlld">
+                                                        🎙️ Domi - American female, confident
+                                                    </option>
+                                                    <option value="EXAVITQu4vr4xnSDxMaL">
+                                                        🎙️ Bella - American female, friendly
+                                                    </option>
+                                                {% endif %}
+                                            </select>
+                                            <div class="d-grid gap-2">
+                                                <button class="btn btn-success" onclick="confirmGenerateAudio()">
+                                                    <i class="fas fa-play-circle"></i> Generate with Selected Voice
+                                                </button>
+                                                <button class="btn btn-outline-secondary" onclick="cancelAudioGeneration()">
+                                                    <i class="fas fa-times"></i> Cancel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        <!-- Enhanced Action Buttons -->
+                        <div class="action-buttons-grid">
+                            <button class="btn btn-outline-primary action-btn" onclick="copyToClipboard()" title="Copy summary to clipboard">
+                                <i class="fas fa-copy"></i>
+                                <span>Copy Text</span>
+                            </button>
+                            <button class="btn btn-outline-success action-btn" onclick="downloadSummary()" title="Download as text file">
+                                <i class="fas fa-download"></i>
+                                <span>Download</span>
+                            </button>
+                            <button class="btn btn-outline-info action-btn" onclick="generateSRT()" id="generateSRTBtn" title="Generate SRT subtitle file">
+                                <i class="fas fa-closed-captioning"></i>
+                                <span>Create SRT</span>
+                            </button>
+                            <button class="btn btn-outline-warning action-btn" onclick="showVideoDownload()" id="videoDownloadBtn" title="Download video with options">
+                                <i class="fas fa-video"></i>
+                                <span>Download Video</span>
+                            </button>
+                            <button class="btn btn-outline-danger action-btn" onclick="deleteSummary()" title="Delete this summary">
+                                <i class="fas fa-trash-alt"></i>
+                                <span>Delete</span>
+                            </button>
+                        </div>
+
+                        <!-- Video Download Modal Panel -->
+                        <div id="videoDownloadPanel" class="download-panel" style="display: none;">
+                            <div class="card border-0 bg-light mt-4">
+                                <div class="card-header">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-video text-warning"></i> 
+                                        Video Download Options
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <form id="videoDownloadForm">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="videoQuality" class="form-label">
+                                                        <i class="fas fa-tv"></i> Quality
+                                                    </label>
+                                                    <select class="form-select" id="videoQuality" name="quality">
+                                                        <option value="best">Best Available (Recommended)</option>
+                                                        <option value="1080p">Full HD (1080p)</option>
+                                                        <option value="720p">HD (720p)</option>
+                                                        <option value="480p">SD (480p)</option>
+                                                        <option value="360p">Low Quality (360p)</option>
+                                                        <option value="worst">Smallest File Size</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="videoFormat" class="form-label">
+                                                        <i class="fas fa-file-video"></i> Format
+                                                    </label>
+                                                    <select class="form-select" id="videoFormat" name="format">
+                                                        <option value="mp4">MP4 (Most Compatible)</option>
+                                                        <option value="webm">WebM (Smaller Size)</option>
+                                                        <option value="mkv">MKV (High Quality)</option>
+                                                        <option value="avi">AVI (Legacy Support)</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="includeSubtitles" name="subtitles">
+                                                <label class="form-check-label" for="includeSubtitles">
+                                                    <strong>Include Generated SRT Subtitles</strong>
+                                                    <small class="text-muted d-block">Embed the summary as subtitles</small>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="d-grid gap-2">
+                                            <button type="button" class="btn btn-warning" onclick="startVideoDownload()" id="startDownloadBtn">
+                                                <i class="fas fa-cloud-download-alt"></i> 
+                                                Start Download
+                                                <small class="d-block mt-1">This may take several minutes</small>
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary" onclick="hideVideoDownload()">
+                                                <i class="fas fa-times"></i> Cancel
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Content Card -->
+            <div class="col-lg-8">
+                <div class="card summary-card slide-up">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-file-text text-primary"></i> 
+                                AI-Generated Summary
+                            </h5>
+                            <div class="summary-actions">
+                                <button class="btn btn-sm btn-outline-secondary" onclick="toggleReadingMode()" id="readingModeBtn">
+                                    <i class="fas fa-eye"></i> Reading Mode
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary" onclick="copyToClipboard()">
+                                    <i class="fas fa-copy"></i> Copy
+                                </button>
+                            </div>
+                        </div>
+                        <small class="text-muted">
+                            <i class="fas fa-robot me-1"></i>
+                            Powered by OpenAI GPT • {{ summary.summary_type.title() }} Analysis
+                        </small>
+                    </div>
+                    <div class="card-body summary-body" id="summaryBody">
+                        <div id="summaryContent" class="summary-content">
+                            {{ summary.summary|replace('\n', '<br>')|safe }}
+                        </div>
+                        
+                        <!-- Reading Progress Bar -->
+                        <div class="reading-progress-container" id="readingProgress" style="display: none;">
+                            <div class="reading-progress-bar"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Similar Content Recommendations -->
+                <div class="card similar-content-card mt-4 slide-up">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-brain text-info"></i> 
+                                Similar Content
+                            </h5>
+                            <button class="btn btn-sm btn-outline-info" onclick="refreshSimilarContent()" id="refreshSimilarBtn">
+                                <i class="fas fa-sync"></i> Refresh
+                            </button>
+                        </div>
+                        <small class="text-muted">
+                            <i class="fas fa-magic me-1"></i>
+                            AI-powered recommendations based on semantic similarity
+                        </small>
+                    </div>
+                    <div class="card-body">
+                        <!-- Loading State -->
+                        <div id="similarContentLoading" class="text-center py-4">
+                            <div class="spinner-border text-info me-3" role="status" aria-hidden="true"></div>
+                            <span class="text-muted">Finding similar content...</span>
+                        </div>
+
+                        <!-- Similar Content List -->
+                        <div id="similarContentList" style="display: none;"></div>
+
+                        <!-- No Similar Content -->
+                        <div id="noSimilarContent" class="text-center py-4" style="display: none;">
+                            <i class="fas fa-search-minus fa-3x text-muted mb-3"></i>
+                            <h6 class="text-muted">No similar content found</h6>
+                            <p class="text-muted mb-0">This summary appears to be unique in your collection</p>
+                        </div>
+
+                        <!-- Vector Search Disabled -->
+                        <div id="vectorSearchDisabled" class="text-center py-4" style="display: none;">
+                            <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                            <h6 class="text-muted">Semantic Search Not Available</h6>
+                            <p class="text-muted mb-3">Vector embeddings are required for similarity matching</p>
+                            <a href="/" class="btn btn-outline-info btn-sm">
+                                <i class="fas fa-cogs me-2"></i>Enable Vector Search
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function copyToClipboard() {
+    const summaryText = `{{ summary.summary|replace('\n', '\\n')|replace('"', '\\"') }}`;
+    navigator.clipboard.writeText(summaryText).then(() => {
+        showToast('📋 Summary copied to clipboard!', 'success');
+    }).catch(err => {
+        showToast('❌ Failed to copy to clipboard', 'error');
+    });
+}
+
+function toggleReadingMode() {
+    const summaryBody = document.getElementById('summaryBody');
+    const readingModeBtn = document.getElementById('readingModeBtn');
+    const readingProgress = document.getElementById('readingProgress');
+    
+    summaryBody.classList.toggle('reading-mode');
+    
+    if (summaryBody.classList.contains('reading-mode')) {
+        readingModeBtn.innerHTML = '<i class="fas fa-eye-slash"></i> Exit Reading';
+        readingProgress.style.display = 'block';
+        document.body.classList.add('reading-mode-active');
+        initReadingProgress();
+    } else {
+        readingModeBtn.innerHTML = '<i class="fas fa-eye"></i> Reading Mode';
+        readingProgress.style.display = 'none';
+        document.body.classList.remove('reading-mode-active');
+    }
+}
+
+function initReadingProgress() {
+    const progressBar = document.querySelector('.reading-progress-bar');
+    const summaryContent = document.getElementById('summaryContent');
+    
+    window.addEventListener('scroll', () => {
+        const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+        const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+        const scrolled = (winScroll / height) * 100;
+        progressBar.style.width = scrolled + '%';
+    });
+}
+
+function showToast(message, type = 'info') {
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `toast-notification toast-${type}`;
+    toast.textContent = message;
+    
+    // Add to page
+    document.body.appendChild(toast);
+    
+    // Show with animation
+    setTimeout(() => toast.classList.add('show'), 100);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => document.body.removeChild(toast), 300);
+    }, 3000);
+}
+
+function downloadSummary() {
+    const summaryText = `YouTube Video Summary\nURL: {{ summary.url }}\nVideo ID: {{ summary.video_id }}\nSummary Type: {{ summary.summary_type }}\nCreated: {{ summary.created_at }}\n${'='.repeat(50)}\n\n{{ summary.summary|replace('\n', '\\n')|replace('"', '\\"') }}`;
+    
+    const blob = new Blob([summaryText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `summary_{{ summary.video_id }}_{{ summary.summary_type }}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function deleteSummary() {
+    if (confirm('Are you sure you want to delete this summary?')) {
+        fetch('/delete/{{ summary.id }}', {
+            method: 'DELETE',
+        })
+        .then(response => {
+            if (response.ok) {
+                window.location.href = '/';
+            } else {
+                alert('Error deleting summary');
+            }
+        });
+    }
+}
+
+function generateAudio() {
+    document.getElementById('generateAudioBtn').style.display = 'none';
+    document.getElementById('audioGeneration').style.display = 'block';
+}
+
+function cancelAudioGeneration() {
+    document.getElementById('generateAudioBtn').style.display = 'block';
+    document.getElementById('audioGeneration').style.display = 'none';
+}
+
+function confirmGenerateAudio() {
+    const voiceId = document.getElementById('voiceSelect').value;
+    const generateBtn = document.querySelector('#audioGeneration .btn-success');
+    
+    generateBtn.disabled = true;
+    generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+    
+    fetch('/generate_audio/{{ summary.id }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            voice_id: voiceId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Reload the page to show the audio player
+            location.reload();
+        } else {
+            alert('Error generating audio: ' + data.message);
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = '<i class="fas fa-magic"></i> Generate with Selected Voice';
+        }
+    })
+    .catch(error => {
+        alert('Error generating audio: ' + error.message);
+        generateBtn.disabled = false;
+        generateBtn.innerHTML = '<i class="fas fa-magic"></i> Generate with Selected Voice';
+    });
+}
+
+function generateSRT() {
+    const generateSRTBtn = document.getElementById('generateSRTBtn');
+    
+    // Disable button and show loading state
+    generateSRTBtn.disabled = true;
+    generateSRTBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Creating SRT...</span>';
+    
+    fetch('/generate_srt/{{ summary.id }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.blob();
+        } else {
+            return response.json().then(data => {
+                throw new Error(data.message || 'Failed to generate SRT');
+            });
+        }
+    })
+    .then(blob => {
+        // Create download link for the SRT file
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'summary_{{ summary.video_id }}.srt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showToast('📄 SRT subtitle file created successfully!', 'success');
+        
+        // Reset button
+        generateSRTBtn.disabled = false;
+        generateSRTBtn.innerHTML = '<i class="fas fa-closed-captioning"></i><span>Create SRT</span>';
+    })
+    .catch(error => {
+        showToast('❌ Failed to create SRT: ' + error.message, 'error');
+        
+        // Reset button
+        generateSRTBtn.disabled = false;
+        generateSRTBtn.innerHTML = '<i class="fas fa-closed-captioning"></i><span>Create SRT</span>';
+    });
+}
+
+function showVideoDownload() {
+    const panel = document.getElementById('videoDownloadPanel');
+    const btn = document.getElementById('videoDownloadBtn');
+    
+    if (panel.style.display === 'none') {
+        panel.style.display = 'block';
+        btn.innerHTML = '<i class="fas fa-video"></i><span>Hide Options</span>';
+    } else {
+        hideVideoDownload();
+    }
+}
+
+function hideVideoDownload() {
+    const panel = document.getElementById('videoDownloadPanel');
+    const btn = document.getElementById('videoDownloadBtn');
+    
+    panel.style.display = 'none';
+    btn.innerHTML = '<i class="fas fa-video"></i><span>Download Video</span>';
+}
+
+function startVideoDownload() {
+    const startBtn = document.getElementById('startDownloadBtn');
+    const quality = document.getElementById('videoQuality').value;
+    const format = document.getElementById('videoFormat').value;
+    const includeSubtitles = document.getElementById('includeSubtitles').checked;
+    
+    // Disable button and show loading state
+    startBtn.disabled = true;
+    startBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>Preparing Download...<small class="d-block mt-1">This may take several minutes</small>';
+    
+    const downloadData = {
+        quality: quality,
+        format: format,
+        include_subtitles: includeSubtitles
+    };
+    
+    fetch('/download_video/{{ summary.id }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(downloadData)
+    })
+    .then(response => {
+        if (response.ok) {
+            // Get filename from response headers or create a default one
+            const contentDisposition = response.headers.get('content-disposition');
+            let filename = 'video.mp4';
+            if (contentDisposition) {
+                const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                if (filenameMatch && filenameMatch[1]) {
+                    filename = filenameMatch[1].replace(/['"]/g, '');
+                }
+            }
+            
+            return response.blob().then(blob => ({ blob, filename }));
+        } else {
+            return response.json().then(data => {
+                throw new Error(data.message || 'Download failed');
+            });
+        }
+    })
+    .then(({ blob, filename }) => {
+        // Create download link
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showToast('🎬 Video download completed successfully!', 'success');
+        hideVideoDownload();
+        
+        // Reset button
+        startBtn.disabled = false;
+        startBtn.innerHTML = '<i class="fas fa-cloud-download-alt"></i>Start Download<small class="d-block mt-1">This may take several minutes</small>';
+    })
+    .catch(error => {
+        showToast('❌ Video download failed: ' + error.message, 'error');
+        
+        // Reset button
+        startBtn.disabled = false;
+        startBtn.innerHTML = '<i class="fas fa-cloud-download-alt"></i>Start Download<small class="d-block mt-1">This may take several minutes</small>';
+    });
+}
+
+// Similar Content Functionality
+document.addEventListener('DOMContentLoaded', function() {
+    loadSimilarContent();
+});
+
+function loadSimilarContent() {
+    const summaryId = {{ summary.id }};
+    
+    showSimilarContentLoading();
+    
+    fetch(`/similar/${summaryId}`)
+    .then(response => response.json())
+    .then(data => {
+        hideSimilarContentLoading();
+        
+        if (data.status === 'success') {
+            if (data.similar_summaries && data.similar_summaries.length > 0) {
+                displaySimilarContent(data.similar_summaries);
+            } else {
+                showNoSimilarContent();
+            }
+        } else {
+            if (data.message.includes('not available')) {
+                showVectorSearchDisabled();
+            } else {
+                showNoSimilarContent();
+                console.error('Similar content error:', data.message);
+            }
+        }
+    })
+    .catch(error => {
+        hideSimilarContentLoading();
+        showVectorSearchDisabled();
+        console.error('Similar content network error:', error);
+    });
+}
+
+function displaySimilarContent(similarSummaries) {
+    const container = document.getElementById('similarContentList');
+    
+    const contentHTML = similarSummaries.map(item => {
+        const similarity = (item.similarity * 100).toFixed(1);
+        const videoThumbnail = `https://img.youtube.com/vi/${item.video_id}/mqdefault.jpg`;
+        
+        return `
+            <div class="similar-item card border-0 mb-3">
+                <div class="card-body p-3">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <img src="${videoThumbnail}" class="similar-thumbnail" alt="Video thumbnail">
+                        </div>
+                        <div class="col">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="similar-title mb-1">
+                                    <a href="/summary/${item.id}" class="text-decoration-none">
+                                        ${item.title || 'YouTube Video'}
+                                    </a>
+                                </h6>
+                                <span class="badge bg-success similarity-score">
+                                    ${similarity}% similar
+                                </span>
+                            </div>
+                            <div class="similar-meta mb-2">
+                                <span class="badge bg-info me-2">${item.summary_type}</span>
+                                <small class="text-muted">
+                                    <i class="fas fa-calendar me-1"></i>${item.created_at.substring(0, 16)}
+                                    <span class="mx-2">•</span>
+                                    <i class="fas fa-file-text me-1"></i>${item.transcript_length} chars
+                                </small>
+                            </div>
+                            <p class="similar-excerpt text-muted mb-2">${truncateText(item.summary, 120)}</p>
+                            <div class="similar-actions">
+                                <a href="/summary/${item.id}" class="btn btn-sm btn-outline-primary me-2">
+                                    <i class="fas fa-eye me-1"></i>View
+                                </a>
+                                <a href="${item.url}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fab fa-youtube me-1"></i>Watch
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    container.innerHTML = contentHTML;
+    container.style.display = 'block';
+}
+
+function showSimilarContentLoading() {
+    document.getElementById('similarContentLoading').style.display = 'block';
+    document.getElementById('similarContentList').style.display = 'none';
+    document.getElementById('noSimilarContent').style.display = 'none';
+    document.getElementById('vectorSearchDisabled').style.display = 'none';
+}
+
+function hideSimilarContentLoading() {
+    document.getElementById('similarContentLoading').style.display = 'none';
+}
+
+function showNoSimilarContent() {
+    document.getElementById('noSimilarContent').style.display = 'block';
+    document.getElementById('similarContentList').style.display = 'none';
+    document.getElementById('vectorSearchDisabled').style.display = 'none';
+}
+
+function showVectorSearchDisabled() {
+    document.getElementById('vectorSearchDisabled').style.display = 'block';
+    document.getElementById('similarContentList').style.display = 'none';
+    document.getElementById('noSimilarContent').style.display = 'none';
+}
+
+function refreshSimilarContent() {
+    const refreshBtn = document.getElementById('refreshSimilarBtn');
+    refreshBtn.disabled = true;
+    refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing';
+    
+    setTimeout(() => {
+        loadSimilarContent();
+        refreshBtn.disabled = false;
+        refreshBtn.innerHTML = '<i class="fas fa-sync"></i> Refresh';
+    }, 500);
+}
+
+function truncateText(text, maxLength) {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+}
+</script>
+{% endblock %}

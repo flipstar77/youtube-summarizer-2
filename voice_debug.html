@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Voice Debug</title>
+    <script>
+        function checkVoices() {
+            fetch('/voices')
+                .then(response => response.json())
+                .then(data => {
+                    const count = data.voices ? data.voices.length : 0;
+                    document.getElementById('result').innerHTML = `
+                        <h2>Voice API Test Results</h2>
+                        <p><strong>Number of voices from API:</strong> ${count}</p>
+                        <p><strong>First 5 voices:</strong></p>
+                        <ul>
+                            ${data.voices.slice(0, 5).map(v => `<li>${v.name} (${v.voice_id})</li>`).join('')}
+                        </ul>
+                        <p><strong>All voice names:</strong></p>
+                        <div style="max-height: 300px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px;">
+                            ${data.voices.map(v => `${v.name}`).join(', ')}
+                        </div>
+                    `;
+                })
+                .catch(err => {
+                    document.getElementById('result').innerHTML = `<p>Error: ${err.message}</p>`;
+                });
+        }
+        
+        function checkForm() {
+            const select = document.getElementById('testSelect');
+            const count = select.options.length;
+            let html = `<h2>Form Voices Test Results</h2>
+                       <p><strong>Number of voices in dropdown:</strong> ${count}</p>
+                       <p><strong>Voice options:</strong></p><ul>`;
+            
+            for (let i = 0; i < Math.min(count, 10); i++) {
+                html += `<li>${select.options[i].text}</li>`;
+            }
+            html += '</ul>';
+            
+            if (count > 10) {
+                html += `<p>... and ${count - 10} more voices</p>`;
+            }
+            
+            document.getElementById('formResult').innerHTML = html;
+        }
+    </script>
+</head>
+<body>
+    <h1>ElevenLabs Voice Debug Page</h1>
+    
+    <div>
+        <button onclick="checkVoices()">Test Voices API</button>
+        <div id="result"></div>
+    </div>
+    
+    <hr>
+    
+    <div>
+        <h2>Test Form Dropdown</h2>
+        <select id="testSelect">
+        </select>
+        <button onclick="checkForm()">Check Form Voices</button>
+        <div id="formResult"></div>
+    </div>
+    
+    <script>
+        // Load voices into dropdown
+        fetch('/voices')
+            .then(response => response.json())
+            .then(data => {
+                const select = document.getElementById('testSelect');
+                data.voices.forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voice.voice_id;
+                    option.textContent = `${voice.name} - ${voice.description}`;
+                    select.appendChild(option);
+                });
+            });
+    </script>
+</body>
+</html>
