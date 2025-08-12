@@ -20,34 +20,10 @@ from automation_scheduler import AutomationScheduler
 
 load_dotenv()
 
-# Direct Supabase client for RPC calls
-from supabase import create_client
-
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-sb = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
-
-def rpc_search_by_embedding(embedding, match_threshold=0.75, match_count=10):
-    """
-    embedding: Liste mit 1536 floats
-    """
-    if not sb:
-        return []
-    payload = {
-        "query_embedding": embedding,
-        "match_threshold": float(match_threshold),
-        "match_count": int(match_count),
-    }
-    res = sb.rpc("search_summaries_by_similarity", payload).execute()
-    return res.data or []
-
-def rpc_find_similar_by_id(summary_id, match_count=5):
-    """Find similar summaries by ID using RPC"""
-    if not sb:
-        return []
-    payload = {"summary_id": int(summary_id), "match_count": int(match_count)}
-    res = sb.rpc("find_similar_summaries", payload).execute()
-    return res.data or []
+# Import Data Access Layer and Services
+from db.queries import dal
+from services.vector_search import vector_search_service
+from services.summary import summary_service
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-change-this')
@@ -645,12 +621,8 @@ def semantic_search():
                 'results': []
             }), 200
         
-        # Use the new vector search method
-        similar_summaries = vectorizer.search_similar_summaries(
-            query_text=query,
-            match_threshold=threshold,
-            match_count=limit
-        )
+        # Use DAL for vector search
+        similar_summaries = vector_search_service.search_by_text(query, threshold, limit)
         
         return jsonify({
             'status': 'success',
@@ -666,9 +638,14 @@ def semantic_search():
 
 @app.route('/similar/<int:summary_id>')
 def similar_api(summary_id):
-    """Simple similar summaries API - direct RPC call"""
+    """Simple similar summaries API - using DAL"""
     count = int(request.args.get("count", 5))
-    items = rpc_find_similar_by_id(summary_id, count)
+    
+    # Validate count parameter
+    if count < 1 or count > 50:
+        return jsonify({"error": "count must be between 1 and 50"}), 400
+    
+    items = vector_search_service.find_similar(summary_id, count)
     return jsonify({
         "summary_id": summary_id,
         "count": count,
@@ -677,7 +654,7 @@ def similar_api(summary_id):
 
 @app.route('/semantic-search', methods=['POST'])
 def semantic_search_rpc():
-    """Semantic search using direct RPC calls"""
+    """Semantic search using DAL"""
     body = request.get_json(force=True) or {}
     embedding = body.get("embedding")  # Liste[float] Länge 1536
     threshold = float(body.get("threshold", 0.75))
@@ -686,7 +663,7 @@ def semantic_search_rpc():
     if not embedding or len(embedding) != 1536:
         return jsonify({"error": "embedding (1536 floats) required"}), 400
 
-    items = rpc_search_by_embedding(embedding, threshold, count)
+    items = vector_search_service.search_by_embedding(embedding, threshold, count)
     return jsonify({"results": items})
 
 @app.route('/vectorize_existing', methods=['POST'])
