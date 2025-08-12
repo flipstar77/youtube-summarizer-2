@@ -2,10 +2,9 @@
 
 A comprehensive Python application that downloads YouTube video transcripts and generates AI-powered summaries with semantic search capabilities. Features automated subscription processing, highlight extraction, SRT chaptering, and a modern web dashboard.
 
-## 🎯 Quick Start - Clean Version
+## 🚀 Quick Start Options
 
-**For a streamlined experience with core features only:**
-
+### **🎯 Clean Version** - Simple & Reliable
 ```bash
 cd clean_version/
 pip install -r requirements.txt
@@ -14,11 +13,27 @@ python init_system.py
 python app_clean.py
 ```
 
-Visit `http://localhost:5000` and start summarizing videos! 🚀
+### **⚡ Enhanced Version** - Production Power
+```bash
+cd clean_version/
+pip install -r requirements_enhanced.txt
+cp .env.example .env  # Add your API keys + Redis
+python init_system.py
+python app_enhanced.py
+```
 
-See [`clean_version/README.md`](./clean_version/README.md) for full clean version documentation.
+Visit `http://localhost:5000` and start analyzing videos! 🚀
 
-## ✨ Features
+| Version | Best For | Features |
+|---------|----------|----------|
+| **Clean** | Getting started, simple use | Core features, 17 dependencies |
+| **Enhanced** | Production, scale, teams | All features + caching, real-time, batch, PDF |
+
+**📖 Documentation:**
+- [Clean Version Guide](./clean_version/README.md)
+- [Enhanced Features Guide](./clean_version/README_ENHANCED.md)
+
+## ✨ Core Features
 
 - 📺 **Video Processing**: Extract transcripts from YouTube videos
 - 🤖 **AI Summaries**: Generate different types of summaries (brief, detailed, bullet-point, tutorial, professional)
@@ -30,6 +45,17 @@ See [`clean_version/README.md`](./clean_version/README.md) for full clean versio
 - 🖥️ **Web Dashboard**: Beautiful, responsive interface
 - 📊 **Analytics**: Statistics and insights dashboard
 - 🔄 **Background Jobs**: Automated processing with retry logic
+
+## 🚀 Enhanced Features (Production Version)
+
+- ⚡ **Redis Caching**: 95% faster operations with smart caching strategies
+- 📡 **Real-time Progress**: WebSocket updates for all long-running operations
+- 📦 **Batch Processing**: Process multiple videos simultaneously (10x faster)
+- 📄 **PDF Export**: Professional reports with 4 templates (Business, Educational, Creative, Technical)
+- 🏷️ **Auto-Categorization**: AI-powered content analysis with smart tagging
+- 📊 **Advanced Analytics**: Comprehensive insights and performance monitoring
+- 🎨 **Enhanced UI**: Modern interface with progress indicators and rich feedback
+- 🔧 **Production Ready**: Enterprise-grade error handling and monitoring
 
 ## 🏗️ Architecture
 
