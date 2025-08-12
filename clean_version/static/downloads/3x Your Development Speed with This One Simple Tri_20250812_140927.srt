@@ -1,0 +1,107 @@
+1
+00:00:00,000 --> 00:00:07,000
+Title: Efficient Development with Cloud Code for Multiple Features  Introduction: This tutorial focuses on utilizing Cloud Code to enhance development speed by managing multiple features concurrently.
+
+2
+00:00:08,000 --> 00:00:13,000
+By setting up separate instances for different features, conflicts can be avoided, and the development process streamlined.
+
+3
+00:00:14,000 --> 00:00:16,000
+The tools required are Cloud Code, GitHub, and Superbase.
+
+4
+00:00:17,000 --> 00:00:20,000
+Prior knowledge of Cloud Code, GitHub, and version control concepts is recommended.
+
+5
+00:00:21,000 --> 00:00:29,000
+Outcome: At the end of this tutorial, you will have established Cloud Code instances for multiple features, enabling simultaneous work on various aspects of a project without conflicts.
+
+6
+00:00:30,000 --> 00:00:32,000
+Step-by-step instructions: 1.
+
+7
+00:00:33,000 --> 00:00:39,000
+Create a directory for 3x development speed:    - Open the terminal and create a new directory named "3x development speed".
+
+8
+00:00:40,000 --> 00:00:42,000
+- Navigate into the created directory.
+
+9
+00:00:43,000 --> 00:00:45,000
+2.
+
+10
+00:00:46,000 --> 00:00:50,000
+Initialize Cloud Code:    - Run the command to initialize Cloud Code in the directory.
+
+11
+00:00:51,000 --> 00:00:53,000
+- Grant necessary permissions as prompted.
+
+12
+00:00:54,000 --> 00:00:56,000
+3.
+
+13
+00:00:57,000 --> 00:01:00,000
+Install necessary MCPs:    - Install the Superbase MCP using the provided command.
+
+14
+00:01:01,000 --> 00:01:03,000
+- Install the GitHub MCP with the provided command.
+
+15
+00:01:04,000 --> 00:01:07,000
+- These MCPs allow Cloud Code to interact with Superbase and GitHub.
+
+16
+00:01:08,000 --> 00:01:10,000
+4.
+
+17
+00:01:11,000 --> 00:01:18,000
+Define the purpose of each Cloud Code instance:    - Specify the role of each Cloud Code instance in managing GitHub and issues related to different features.
+
+18
+00:01:19,000 --> 00:01:24,000
+- Highlight the significance of branching in Git to prevent conflicts when working on multiple features simultaneously.
+
+19
+00:01:25,000 --> 00:01:27,000
+5.
+
+20
+00:01:28,000 --> 00:01:33,000
+Set up Cloud Code instances for each feature:    - Create separate branches for each feature in your GitHub repository.
+
+21
+00:01:34,000 --> 00:01:38,000
+- Check out the code into different directories for independent work on each feature.
+
+22
+00:01:39,000 --> 00:01:42,000
+- Modify the code in each branch separately, resolving conflicts before merging.
+
+23
+00:01:43,000 --> 00:01:45,000
+6.
+
+24
+00:01:46,000 --> 00:01:51,000
+Utilize Whisper Flow for collaboration:    - Use Whisper Flow to effectively coordinate and manage development across multiple features.
+
+25
+00:01:52,000 --> 00:01:58,000
+Final result: By setting up Cloud Code instances for multiple features, you can concurrently work on different aspects of a project.
+
+26
+00:01:59,000 --> 00:02:03,000
+Utilizing separate branches and directories helps avoid conflicts and accelerates the development process significantly.
+
+27
+00:02:04,000 --> 00:02:09,000
+This approach enables efficient management and development of multiple features simultaneously, enhancing productivity and efficiency in software development.

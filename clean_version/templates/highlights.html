@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Highlights - YouTube Summarizer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --warning-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+        
+        .hero-section {
+            background: var(--primary-gradient);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            border-radius: 0 0 20px 20px;
+        }
+        
+        .video-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid #f0f0f0;
+            transition: all 0.3s ease;
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+        
+        .video-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        }
+        
+        .video-header {
+            background: var(--success-gradient);
+            color: white;
+            padding: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .video-body {
+            padding: 1.5rem;
+        }
+        
+        .highlight-item {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid var(--primary-color, #667eea);
+            transition: all 0.3s ease;
+        }
+        
+        .highlight-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+        
+        .highlight-name {
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 0.5rem;
+        }
+        
+        .highlight-details {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-bottom: 0.5rem;
+        }
+        
+        .highlight-text {
+            font-size: 0.85rem;
+            color: #495057;
+            font-style: italic;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stats-container {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 0.5rem;
+        }
+        
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .btn-gradient {
+            background: var(--primary-gradient);
+            border: none;
+            color: white;
+        }
+        
+        .btn-gradient:hover {
+            opacity: 0.9;
+            color: white;
+        }
+        
+        .workflow-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 16px;
+            margin-bottom: 2rem;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        
+        .empty-state i {
+            font-size: 4rem;
+            color: #dee2e6;
+            margin-bottom: 1rem;
+        }
+        
+        .badge-status {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+        }
+        
+        .collapsible-content {
+            display: none;
+        }
+        
+        .collapsible-content.show {
+            display: block;
+        }
+        
+        @media (max-width: 768px) {
+            .video-header {
+                flex-direction: column;
+                text-align: center;
+                gap: 1rem;
+            }
+            
+            .action-buttons {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-brain"></i> AI Video Highlights
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">Dashboard</a>
+                <a class="nav-link" href="/chatbot">Q&A Chat</a>
+                <a class="nav-link active" href="/highlights">Highlights</a>
+                <a class="nav-link" href="/new">Neues Video</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="hero-section">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1><i class="fas fa-magic"></i> AI-Powered Video Highlights</h1>
+                    <p class="lead mb-0">Intelligente Zeitstempel, Kapitel und optionale Video-Clips - organisiert nach Videos</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <button class="btn btn-light btn-lg" data-bs-toggle="modal" data-bs-target="#extractModal">
+                        <i class="fas fa-plus"></i> Neue Analyse starten
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Workflow Information -->
+        <div class="workflow-info">
+            <h5><i class="fas fa-info-circle"></i> So funktioniert's:</h5>
+            <div class="row mt-3">
+                <div class="col-md-4">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <div class="bg-white text-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                <strong>1</strong>
+                            </div>
+                        </div>
+                        <div>
+                            <strong>AI Analyse</strong><br>
+                            <small>Automatische Erkennung von Highlights und Kapiteln (~30s)</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <div class="bg-white text-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                <strong>2</strong>
+                            </div>
+                        </div>
+                        <div>
+                            <strong>Sofortige Ergebnisse</strong><br>
+                            <small>Zeitstempel, Kapitel und YouTube-Links verfügbar</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <div class="bg-white text-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                <strong>3</strong>
+                            </div>
+                        </div>
+                        <div>
+                            <strong>Optional: Video-Clips</strong><br>
+                            <small>Extrahiere gewünschte Highlights als MP4-Dateien</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        {% if not videos_with_highlights %}
+            <div class="empty-state">
+                <i class="fas fa-video"></i>
+                <h3>Noch keine Video-Analysen</h3>
+                <p class="text-muted">Starte deine erste AI-gestützte Highlight-Extraktion!</p>
+                <button class="btn btn-gradient btn-lg" data-bs-toggle="modal" data-bs-target="#extractModal">
+                    <i class="fas fa-magic"></i> Erste Analyse starten
+                </button>
+            </div>
+        {% else %}
+            <!-- Videos with Highlights -->
+            {% for video in videos_with_highlights %}
+                <div class="video-card">
+                    <div class="video-header">
+                        <div>
+                            <h5 class="mb-1">
+                                <i class="fab fa-youtube"></i> 
+                                {{ video.video_title[:80] }}{% if video.video_title|length > 80 %}...{% endif %}
+                            </h5>
+                            <div class="d-flex gap-2 mt-2">
+                                <span class="badge bg-light text-dark">
+                                    <i class="fas fa-star"></i> {{ video.total_highlights }} Highlights
+                                </span>
+                                <span class="badge bg-light text-dark">
+                                    <i class="fas fa-book"></i> {{ video.total_chapters }} Kapitel
+                                </span>
+                                <span class="badge bg-light text-dark">
+                                    <i class="fas fa-video"></i> {{ video.total_clips_extracted }} Clips
+                                </span>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <div class="mb-2">
+                                <small class="opacity-75">
+                                    Letzte Analyse: {{ video.latest_analysis.created.strftime('%d.%m.%Y %H:%M') if video.latest_analysis else 'Keine' }}
+                                </small>
+                            </div>
+                            <div class="action-buttons">
+                                <a href="{{ video.video_url }}" class="btn btn-light btn-sm" target="_blank">
+                                    <i class="fab fa-youtube"></i> YouTube
+                                </a>
+                                <button class="btn btn-outline-light btn-sm" onclick="toggleHighlights('video-{{ video.summary_id }}')">
+                                    <i class="fas fa-chevron-down" id="icon-video-{{ video.summary_id }}"></i> 
+                                    Details
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="video-body">
+                        <!-- Summary Stats -->
+                        <div class="stats-container">
+                            <div class="row">
+                                <div class="col-3 stat-item">
+                                    <div class="stat-number text-primary">{{ video.analyses|length }}</div>
+                                    <div class="stat-label">Analysen</div>
+                                </div>
+                                <div class="col-3 stat-item">
+                                    <div class="stat-number text-success">{{ video.total_clips_extracted }}</div>
+                                    <div class="stat-label">Extrahiert</div>
+                                </div>
+                                <div class="col-3 stat-item">
+                                    <div class="stat-number text-warning">{{ video.total_clips_failed }}</div>
+                                    <div class="stat-label">Ausstehend</div>
+                                </div>
+                                <div class="col-3 stat-item">
+                                    {% set completion_rate = (video.total_clips_extracted / video.total_highlights * 100) if video.total_highlights > 0 else 0 %}
+                                    <div class="stat-number text-info">{{ "%.0f"|format(completion_rate) }}%</div>
+                                    <div class="stat-label">Vollständig</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Collapsible Highlights Section -->
+                        <div class="collapsible-content" id="highlights-video-{{ video.summary_id }}">
+                            {% for analysis in video.analyses %}
+                                <div class="analysis-section mb-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-brain text-primary"></i>
+                                            Analyse vom {{ analysis.created.strftime('%d.%m.%Y %H:%M') }}
+                                        </h6>
+                                        <div class="action-buttons">
+                                            <button class="btn btn-sm btn-outline-primary" 
+                                                    onclick="showHighlightDetails('{{ analysis.filename }}')">
+                                                <i class="fas fa-eye"></i> Vollständige Details
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Individual Highlights -->
+                                    {% if analysis.individual_highlights %}
+                                        <div class="row">
+                                            {% for highlight in analysis.individual_highlights %}
+                                                <div class="col-lg-6 mb-3">
+                                                    <div class="highlight-item">
+                                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                                            <div class="highlight-name">{{ highlight.name }}</div>
+                                                            <div class="d-flex gap-1">
+                                                                <span class="badge bg-primary badge-status">{{ highlight.score }}/10</span>
+                                                                {% if highlight.status == 'extracted' %}
+                                                                    <span class="badge bg-success badge-status">Extrahiert</span>
+                                                                {% else %}
+                                                                    <span class="badge bg-warning badge-status">Ausstehend</span>
+                                                                {% endif %}
+                                                            </div>
+                                                        </div>
+                                                        <div class="highlight-details">
+                                                            <i class="fas fa-clock"></i> {{ highlight.timestamp }}
+                                                            {% if highlight.duration %}
+                                                                <span class="ms-2"><i class="fas fa-stopwatch"></i> {{ highlight.duration }}</span>
+                                                            {% endif %}
+                                                        </div>
+                                                        <div class="highlight-text">{{ highlight.text }}</div>
+                                                        <div class="action-buttons">
+                                                            {% set youtube_time = highlight.timestamp.split(' - ')[0] %}
+                                                            {% set time_parts = youtube_time.split(':') %}
+                                                            {% set total_seconds = time_parts[0]|int * 3600 + time_parts[1]|int * 60 + time_parts[2]|float %}
+                                                            <a href="{{ video.video_url }}&t={{ total_seconds|int }}s" 
+                                                               class="btn btn-sm btn-outline-danger" target="_blank">
+                                                                <i class="fab fa-youtube"></i> YouTube
+                                                            </a>
+                                                            {% if highlight.status != 'extracted' %}
+                                                                <button class="btn btn-sm btn-success" 
+                                                                        onclick="extractSingleClip('{{ video.summary_id }}', {{ highlight.index }})">
+                                                                    <i class="fas fa-scissors"></i> Clip erstellen
+                                                                </button>
+                                                            {% else %}
+                                                                <span class="badge bg-success">✓ Clip verfügbar</span>
+                                                                {% if highlight.clip_path %}
+                                                                    <a href="/download_highlight/{{ highlight.clip_path.split('/')[-1] }}" 
+                                                                       class="btn btn-sm btn-primary ms-2">
+                                                                        <i class="fas fa-download"></i> Download
+                                                                    </a>
+                                                                {% endif %}
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+            
+            <!-- Overall Statistics -->
+            {% if total_stats %}
+                <div class="row mt-4">
+                    <div class="col-md-2">
+                        <div class="card text-center h-100">
+                            <div class="card-body">
+                                <i class="fas fa-video fa-2x text-primary mb-2"></i>
+                                <h3>{{ total_stats.total_videos }}</h3>
+                                <p class="text-muted mb-0">Videos</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="card text-center h-100">
+                            <div class="card-body">
+                                <i class="fas fa-chart-line fa-2x text-info mb-2"></i>
+                                <h3>{{ total_stats.total_analyses }}</h3>
+                                <p class="text-muted mb-0">Analysen</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="card text-center h-100">
+                            <div class="card-body">
+                                <i class="fas fa-star fa-2x text-warning mb-2"></i>
+                                <h3>{{ total_stats.total_highlights }}</h3>
+                                <p class="text-muted mb-0">Highlights</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="card text-center h-100">
+                            <div class="card-body">
+                                <i class="fas fa-book fa-2x text-success mb-2"></i>
+                                <h3>{{ total_stats.total_chapters }}</h3>
+                                <p class="text-muted mb-0">Kapitel</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="card text-center h-100">
+                            <div class="card-body">
+                                <i class="fas fa-film fa-2x text-danger mb-2"></i>
+                                <h3>{{ total_stats.total_clips }}</h3>
+                                <p class="text-muted mb-0">Video-Clips</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="card text-center h-100">
+                            <div class="card-body">
+                                <i class="fas fa-percentage fa-2x text-purple mb-2"></i>
+                                {% set overall_completion = (total_stats.total_clips / total_stats.total_highlights * 100) if total_stats.total_highlights > 0 else 0 %}
+                                <h3>{{ "%.0f"|format(overall_completion) }}%</h3>
+                                <p class="text-muted mb-0">Vollständig</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <!-- Extract Modal -->
+    <div class="modal fade" id="extractModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-magic"></i> AI Highlight-Analyse starten</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="extractForm">
+                        <div class="mb-3">
+                            <label class="form-label"><i class="fas fa-video"></i> Video auswählen:</label>
+                            <select class="form-select" id="videoSelect" required>
+                                <option value="">Video auswählen...</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label"><i class="fas fa-list-ol"></i> Anzahl Highlights:</label>
+                            <input type="number" class="form-control" id="highlightCount" 
+                                   value="5" min="1" max="10">
+                            <div class="form-text">Empfohlen: 3-7 Highlights für optimale Ergebnisse</div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-6">
+                                <label class="form-label"><i class="fas fa-clock"></i> Min. Dauer:</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="minDuration" 
+                                           value="15" min="5" max="120">
+                                    <span class="input-group-text">Sek.</span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label"><i class="fas fa-clock"></i> Max. Dauer:</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="maxDuration" 
+                                           value="60" min="10" max="300">
+                                    <span class="input-group-text">Sek.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="button" class="btn btn-gradient" onclick="startExtraction()">
+                        <i class="fas fa-magic"></i> Analyse starten
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Processing Modal -->
+    <div class="modal fade" id="processingModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center py-4">
+                    <div class="mb-3">
+                        <div class="spinner-grow text-primary" style="width: 3rem; height: 3rem;"></div>
+                    </div>
+                    <h5><i class="fas fa-brain"></i> AI analysiert dein Video...</h5>
+                    <p class="text-muted mb-3">
+                        Highlights werden erkannt und Kapitel erstellt.<br>
+                        <small>Dies dauert normalerweise 30-60 Sekunden.</small>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Details Modal -->
+    <div class="modal fade" id="detailsModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-gradient text-white">
+                    <h5 class="modal-title"><i class="fas fa-chart-line"></i> Highlight-Details</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="detailsContent">
+                        <!-- Content will be loaded here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Load available videos for selection
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAvailableVideos();
+        });
+        
+        function loadAvailableVideos() {
+            fetch('/api/summaries')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        const select = document.getElementById('videoSelect');
+                        data.data.forEach(video => {
+                            const option = document.createElement('option');
+                            option.value = video.id;
+                            option.textContent = `${video.title.substring(0, 60)}${video.title.length > 60 ? '...' : ''}`;
+                            select.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => console.error('Fehler beim Laden der Videos:', error));
+        }
+        
+        function startExtraction() {
+            const videoId = document.getElementById('videoSelect').value;
+            const highlightCount = document.getElementById('highlightCount').value;
+            const minDuration = document.getElementById('minDuration').value;
+            const maxDuration = document.getElementById('maxDuration').value;
+            
+            if (!videoId) {
+                alert('Bitte wähle ein Video aus!');
+                return;
+            }
+            
+            // Close selection modal
+            const extractModal = bootstrap.Modal.getInstance(document.getElementById('extractModal'));
+            extractModal.hide();
+            
+            // Show processing modal
+            const processingModal = new bootstrap.Modal(document.getElementById('processingModal'));
+            processingModal.show();
+            
+            console.log('[DEBUG] Starting highlight extraction for video ID:', videoId);
+            
+            // Start extraction with extended timeout and better error handling
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout
+            
+            fetch(`/extract_highlights/${videoId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    highlight_count: parseInt(highlightCount),
+                    min_duration: parseInt(minDuration),
+                    max_duration: parseInt(maxDuration)
+                }),
+                signal: controller.signal
+            })
+            .then(response => {
+                clearTimeout(timeoutId);
+                console.log('[DEBUG] Response received, status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                return response.json();
+            })
+            .then(data => {
+                processingModal.hide();
+                console.log('[DEBUG] Response data:', data);
+                
+                if (data.status === 'success') {
+                    // Better messaging based on processing mode
+                    if (data.is_cached) {
+                        showNotification('info', `${data.message}. Verwende "Clip erstellen" Buttons um Video-Clips zu extrahieren.`);
+                    } else if (data.processing_mode === 'fast_transcript_only') {
+                        showNotification('success', `✅ Highlights identifiziert! Klicke auf "Clip erstellen" um einzelne Video-Clips herunterzuladen.`);
+                    } else {
+                        showNotification('success', `Erfolg! ${data.message}`);
+                    }
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    showNotification('error', `Fehler: ${data.message || 'Unbekannter Fehler'}`);
+                }
+            })
+            .catch(error => {
+                clearTimeout(timeoutId);
+                processingModal.hide();
+                
+                console.error('[ERROR] Highlight extraction failed:', error);
+                
+                let errorMessage;
+                if (error.name === 'AbortError') {
+                    errorMessage = 'Timeout: Die Verarbeitung dauert zu lange (über 5 Minuten). Bitte versuche es später erneut.';
+                } else if (error.message.includes('Failed to fetch')) {
+                    errorMessage = 'Netzwerkfehler: Keine Verbindung zum Server. Prüfe deine Internetverbindung.';
+                } else if (error.message.includes('HTTP 500')) {
+                    errorMessage = 'Serverfehler: Problem bei der Highlight-Extraktion. Prüfe die Konsole für Details.';
+                } else if (error.message.includes('HTTP 404')) {
+                    errorMessage = 'Video nicht gefunden. Möglicherweise wurde es gelöscht.';
+                } else {
+                    errorMessage = `Fehler bei der Verarbeitung: ${error.message}`;
+                }
+                
+                showNotification('error', errorMessage);
+            });
+        }
+        
+        function toggleHighlights(videoId) {
+            const content = document.getElementById(`highlights-${videoId}`);
+            const icon = document.getElementById(`icon-${videoId}`);
+            
+            if (content.classList.contains('show')) {
+                content.classList.remove('show');
+                icon.classList.remove('fa-chevron-up');
+                icon.classList.add('fa-chevron-down');
+            } else {
+                content.classList.add('show');
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-up');
+            }
+        }
+        
+        function showHighlightDetails(filename) {
+            fetch(`/highlight_details/${filename}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        displayHighlightDetails(data.data);
+                        const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+                        modal.show();
+                    } else {
+                        showNotification('error', `Fehler beim Laden: ${data.message}`);
+                    }
+                })
+                .catch(error => {
+                    showNotification('error', `Fehler: ${error.message}`);
+                });
+        }
+        
+        function displayHighlightDetails(data) {
+            let content = `
+                <div class="row">
+                    <div class="col-md-8">
+                        <h5><i class="fab fa-youtube text-danger"></i> ${data.video_title}</h5>
+                        <p class="text-muted">${data.video_url}</p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="row text-center">
+                            <div class="col-3">
+                                <div class="fw-bold text-primary">${data.highlights_identified}</div>
+                                <small>Highlights</small>
+                            </div>
+                            <div class="col-3">
+                                <div class="fw-bold text-info">${data.chapters ? data.chapters.length : 0}</div>
+                                <small>Kapitel</small>
+                            </div>
+                            <div class="col-3">
+                                <div class="fw-bold text-success">${data.clips_extracted}</div>
+                                <small>Extrahiert</small>
+                            </div>
+                            <div class="col-3">
+                                <div class="fw-bold text-warning">${data.clips_failed}</div>
+                                <small>Ausstehend</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <hr class="my-4">
+            `;
+            
+            // Show highlights
+            if (data.clips && data.clips.length > 0) {
+                content += `
+                    <h6><i class="fas fa-star text-warning"></i> Erkannte Highlights:</h6>
+                    <div class="row">
+                `;
+                
+                data.clips.forEach((clip, index) => {
+                    const youtubeUrl = data.video_url + `&t=${Math.floor(clip.start_time.split(':')[0]*3600 + clip.start_time.split(':')[1]*60 + parseFloat(clip.start_time.split(':')[2]))}s`;
+                    const isExtracted = clip.status === 'extracted';
+                    
+                    content += `
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100">
+                                <div class="card-header d-flex justify-content-between">
+                                    <strong>Highlight ${index + 1}</strong>
+                                    <span class="badge bg-primary">${clip.score}/10</span>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="badge bg-info">${clip.start_time} - ${clip.end_time}</span>
+                                        <span class="badge ${isExtracted ? 'bg-success' : 'bg-warning'}">${isExtracted ? 'Extrahiert' : 'Ausstehend'}</span>
+                                    </div>
+                                    <p class="small">${clip.text.substring(0, 120)}...</p>
+                                    <p class="small text-muted mb-3"><strong>AI-Grund:</strong> ${clip.reason.substring(0, 100)}...</p>
+                                    <div class="d-flex gap-2">
+                                        <a href="${youtubeUrl}" class="btn btn-outline-danger btn-sm" target="_blank">
+                                            <i class="fab fa-youtube"></i> YouTube
+                                        </a>
+                                        ${!isExtracted ? 
+                                            `<button class="btn btn-success btn-sm" onclick="extractSingleClip('${data.summary_id}', ${index})">
+                                                <i class="fas fa-scissors"></i> Clip erstellen
+                                            </button>` : 
+                                            `<span class="badge bg-success">✓ Clip verfügbar</span>
+                                            ${clip.clip_path ? 
+                                                `<a href="/download_highlight/${clip.clip_path.split('/').pop()}" 
+                                                   class="btn btn-primary btn-sm ms-2">
+                                                    <i class="fas fa-download"></i> Download
+                                                </a>` : ''
+                                            }`
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                content += `</div>`;
+            }
+            
+            // Show chapters
+            if (data.chapters && data.chapters.length > 0) {
+                content += `
+                    <h6 class="mt-4"><i class="fas fa-book text-info"></i> Video-Kapitel:</h6>
+                    <div class="list-group mb-3">
+                `;
+                
+                data.chapters.forEach((chapter, index) => {
+                    const youtubeUrl = data.video_url + `&t=${chapter.timestamp_seconds}s`;
+                    content += `
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>${chapter.timestamp} - ${chapter.title}</strong>
+                                <div class="small text-muted">${chapter.description}</div>
+                            </div>
+                            <a href="${youtubeUrl}" class="btn btn-outline-primary btn-sm" target="_blank">
+                                <i class="fas fa-external-link-alt"></i>
+                            </a>
+                        </div>
+                    `;
+                });
+                
+                content += `</div>`;
+                
+                // YouTube Description
+                if (data.youtube_description) {
+                    content += `
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="fas fa-clipboard"></i> YouTube Beschreibung</h6>
+                            </div>
+                            <div class="card-body">
+                                <pre class="bg-light p-3 rounded small">${data.youtube_description}</pre>
+                                <button class="btn btn-outline-secondary btn-sm" onclick="copyToClipboard('${data.youtube_description.replace(/'/g, "\\'")}')">
+                                    <i class="fas fa-copy"></i> In Zwischenablage kopieren
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+            
+            document.getElementById('detailsContent').innerHTML = content;
+        }
+        
+        function extractSingleClip(summaryId, clipIndex) {
+            if (confirm('Möchtest du diesen einzelnen Clip mit FFmpeg extrahieren?')) {
+                showNotification('info', 'Clip wird extrahiert...');
+                
+                fetch(`/extract_single_clip/${summaryId}/${clipIndex}`, {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showNotification('success', '🎬 Clip erfolgreich extrahiert und kann jetzt heruntergeladen werden!');
+                        setTimeout(() => location.reload(), 2000);
+                    } else {
+                        showNotification('error', `Fehler: ${data.message}`);
+                    }
+                })
+                .catch(error => {
+                    showNotification('error', `Fehler: ${error.message}`);
+                });
+            }
+        }
+        
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showNotification('success', 'In Zwischenablage kopiert!');
+            });
+        }
+
+        function deleteHighlight(filename) {
+            if (confirm('Highlight-Analyse wirklich löschen?')) {
+                showNotification('info', 'Lösch-Funktionalität wird implementiert...');
+            }
+        }
+        
+        function showNotification(type, message) {
+            // Simple notification system
+            const alertClass = {
+                'success': 'alert-success',
+                'error': 'alert-danger', 
+                'info': 'alert-info',
+                'warning': 'alert-warning'
+            }[type] || 'alert-info';
+            
+            const notification = document.createElement('div');
+            notification.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+            notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            notification.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Auto dismiss after 5 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

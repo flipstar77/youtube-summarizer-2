@@ -1,6 +1,22 @@
 # YouTube Summarizer
 
-A comprehensive Python application that downloads YouTube video transcripts and generates AI-powered summaries with semantic search capabilities. Features automated subscription processing, highlight extraction, and a modern web dashboard.
+A comprehensive Python application that downloads YouTube video transcripts and generates AI-powered summaries with semantic search capabilities. Features automated subscription processing, highlight extraction, SRT chaptering, and a modern web dashboard.
+
+## 🎯 Quick Start - Clean Version
+
+**For a streamlined experience with core features only:**
+
+```bash
+cd clean_version/
+pip install -r requirements.txt
+cp .env.example .env  # Add your API keys
+python init_system.py
+python app_clean.py
+```
+
+Visit `http://localhost:5000` and start summarizing videos! 🚀
+
+See [`clean_version/README.md`](./clean_version/README.md) for full clean version documentation.
 
 ## ✨ Features
 
@@ -8,6 +24,7 @@ A comprehensive Python application that downloads YouTube video transcripts and 
 - 🤖 **AI Summaries**: Generate different types of summaries (brief, detailed, bullet-point, tutorial, professional)
 - 🔍 **Semantic Search**: Vector-based similarity search using OpenAI embeddings
 - 🎬 **Highlight Extraction**: Automatic video highlight detection and compilation
+- 📝 **SRT Chaptering**: Upload SRT files and create intelligent chapter markers for content creators
 - 📡 **Subscription Automation**: Monitor RSS feeds and auto-process new videos
 - 🎵 **Text-to-Speech**: Generate audio versions with ElevenLabs
 - 🖥️ **Web Dashboard**: Beautiful, responsive interface

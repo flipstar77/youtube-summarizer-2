@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Q&A Chatbot - YouTube Summarizer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+    <style>
+        .chat-container {
+            height: 500px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            background: #f8f9fa;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 8px;
+        }
+        .user-message {
+            background: #007bff;
+            color: white;
+            margin-left: 20%;
+            text-align: right;
+        }
+        .bot-message {
+            background: white;
+            color: #333;
+            margin-right: 20%;
+            border: 1px solid #dee2e6;
+        }
+        .source-video {
+            background: #e9ecef;
+            padding: 8px 12px;
+            border-radius: 5px;
+            margin-top: 10px;
+            border-left: 3px solid #007bff;
+        }
+        .similarity-badge {
+            background: #28a745;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.8em;
+        }
+        .loading-dots {
+            display: inline-block;
+        }
+        .loading-dots:after {
+            content: '...';
+            animation: dots 1.5s steps(5, end) infinite;
+        }
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60% { content: '...'; }
+            80%, 100% { content: ''; }
+        }
+        .mode-switch {
+            border: 1px solid #007bff;
+            border-radius: 25px;
+            padding: 5px;
+            background: white;
+        }
+        .mode-switch .btn {
+            border-radius: 20px;
+            border: none;
+            padding: 8px 20px;
+            font-size: 0.9em;
+        }
+        .mode-switch .btn.active {
+            background: #007bff;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-robot"></i> Video Q&A Chatbot
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="navbar-nav me-auto">
+                    <a class="nav-link" href="/"><i class="fas fa-home"></i> Dashboard</a>
+                    <a class="nav-link" href="/new"><i class="fas fa-plus"></i> New Summary</a>
+                    <a class="nav-link active" href="/chatbot"><i class="fas fa-robot"></i> Q&A Chat</a>
+                    <a class="nav-link" href="/highlights"><i class="fas fa-video"></i> Video Highlights</a>
+                    <a class="nav-link" href="/subscriptions"><i class="fas fa-rss"></i> Subscriptions</a>
+                </div>
+                <div class="navbar-nav ms-auto">
+                    <div class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-search"></i> Quick Search
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-end search-dropdown">
+                            <div class="px-3 py-2">
+                                <input type="text" class="form-control" id="quickSearchInput" placeholder="Search summaries...">
+                                <div id="quickSearchResults" class="mt-2"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4><i class="fas fa-comments"></i> Video Q&A Chat</h4>
+                        
+                        <!-- Mode Switch -->
+                        <div class="mode-switch">
+                            <button class="btn active" id="collectionMode">
+                                <i class="fas fa-database"></i> Alle Videos
+                            </button>
+                            <button class="btn" id="transcriptMode">
+                                <i class="fas fa-file-text"></i> Einzelnes Video
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="card-body">
+                        <!-- Video Selection (hidden by default) -->
+                        <div id="videoSelection" class="mb-3" style="display: none;">
+                            <label class="form-label">Video für Transcript-Chat auswählen:</label>
+                            <select class="form-select" id="videoSelect">
+                                <option value="">Video auswählen...</option>
+                                {% for summary in summaries %}
+                                    <option value="{{ summary.video_id }}">{{ summary.title }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Chat Interface -->
+                        <div class="chat-container" id="chatContainer">
+                            <div class="message bot-message">
+                                <strong>🤖 Video Assistant:</strong><br>
+                                Hallo! Ich kann dir Fragen zu deiner Video-Sammlung beantworten. 
+                                Du kannst entweder alle Videos durchsuchen oder mit einem spezifischen Video chatten.
+                                <br><br>
+                                <em>Beispiele:</em><br>
+                                • "Wie funktioniert Machine Learning?"<br>
+                                • "Was wurde über Künstliche Intelligenz gesagt?"<br>
+                                • "Erkläre mir das Konzept von Deep Learning"
+                            </div>
+                        </div>
+                        
+                        <!-- Input Area -->
+                        <div class="row mt-3">
+                            <div class="col">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="questionInput" 
+                                           placeholder="Stelle deine Frage..." maxlength="500">
+                                    <button class="btn btn-primary" id="sendButton" onclick="sendQuestion()">
+                                        <i class="fas fa-paper-plane"></i> Senden
+                                    </button>
+                                </div>
+                                <div class="form-text">
+                                    <span id="modeStatus">Modus: Durchsuche alle {{ summaries|length }} Videos</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Statistics -->
+                <div class="row mt-4">
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h5>{{ summaries|length }}</h5>
+                                <p class="text-muted mb-0">Videos verfügbar</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h5 id="questionsAsked">0</h5>
+                                <p class="text-muted mb-0">Fragen gestellt</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h5>OpenAI</h5>
+                                <p class="text-muted mb-0">AI Model</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Quick Search Functionality
+        let searchTimeout;
+        const quickSearchInput = document.getElementById('quickSearchInput');
+        const quickSearchResults = document.getElementById('quickSearchResults');
+        
+        if (quickSearchInput) {
+            quickSearchInput.addEventListener('input', function() {
+                const query = this.value.trim();
+                clearTimeout(searchTimeout);
+                
+                if (query.length >= 2) {
+                    searchTimeout = setTimeout(() => {
+                        performQuickSearch(query);
+                    }, 300);
+                } else {
+                    quickSearchResults.innerHTML = '';
+                }
+            });
+        }
+        
+        function performQuickSearch(query) {
+            fetch('/semantic_search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: query })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success' && data.results.length > 0) {
+                    const resultsHTML = data.results.slice(0, 3).map(result => `
+                        <div class="border-bottom py-1">
+                            <a href="/summary/${result.id}" class="text-decoration-none">
+                                <small class="fw-bold">${result.title.substring(0, 40)}...</small><br>
+                                <small class="text-muted">${result.summary.substring(0, 60)}...</small>
+                            </a>
+                        </div>
+                    `).join('');
+                    quickSearchResults.innerHTML = resultsHTML;
+                } else {
+                    quickSearchResults.innerHTML = '<small class="text-muted">No results found</small>';
+                }
+            })
+            .catch(error => console.error('Search error:', error));
+        }
+    </script>
+    <script>
+        let currentMode = 'collection'; // 'collection' or 'transcript'
+        let questionCount = 0;
+        
+        // Mode switching
+        document.getElementById('collectionMode').addEventListener('click', function() {
+            switchMode('collection');
+        });
+        
+        document.getElementById('transcriptMode').addEventListener('click', function() {
+            switchMode('transcript');
+        });
+        
+        function switchMode(mode) {
+            currentMode = mode;
+            
+            // Update button states
+            document.getElementById('collectionMode').classList.toggle('active', mode === 'collection');
+            document.getElementById('transcriptMode').classList.toggle('active', mode === 'transcript');
+            
+            // Show/hide video selection
+            document.getElementById('videoSelection').style.display = 
+                mode === 'transcript' ? 'block' : 'none';
+            
+            // Update status
+            const statusElement = document.getElementById('modeStatus');
+            if (mode === 'collection') {
+                statusElement.textContent = 'Modus: Durchsuche alle {{ summaries|length }} Videos';
+            } else {
+                statusElement.textContent = 'Modus: Chat mit ausgewähltem Video';
+            }
+            
+            // Clear chat
+            clearChat();
+        }
+        
+        function clearChat() {
+            const chatContainer = document.getElementById('chatContainer');
+            chatContainer.innerHTML = `
+                <div class="message bot-message">
+                    <strong>🤖 Video Assistant:</strong><br>
+                    Chat wurde zurückgesetzt. Stelle mir eine neue Frage!
+                </div>
+            `;
+        }
+        
+        // Send question
+        function sendQuestion() {
+            const input = document.getElementById('questionInput');
+            const question = input.value.trim();
+            
+            if (!question) return;
+            
+            if (currentMode === 'transcript') {
+                const videoSelect = document.getElementById('videoSelect');
+                if (!videoSelect.value) {
+                    alert('Bitte wähle zuerst ein Video aus!');
+                    return;
+                }
+            }
+            
+            // Add user message
+            addMessage('user', question);
+            input.value = '';
+            
+            // Add loading message
+            const loadingId = addMessage('bot', '<i class="fas fa-spinner fa-spin"></i> Suche nach Antworten<span class="loading-dots"></span>');
+            
+            // Send request
+            const endpoint = currentMode === 'collection' ? '/api/ask_question' : '/api/chat_transcript';
+            const payload = {
+                question: question
+            };
+            
+            if (currentMode === 'transcript') {
+                payload.video_id = document.getElementById('videoSelect').value;
+            }
+            
+            fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Remove loading message
+                document.getElementById(loadingId).remove();
+                
+                if (data.status === 'success') {
+                    // Add detected topics info
+                    let topicsInfo = '';
+                    if (data.detected_topics && data.detected_topics.length > 0) {
+                        topicsInfo = `<div style="background:#e3f2fd; padding:8px; border-radius:5px; margin-bottom:10px;">
+                            <strong>🎯 Erkannte Themen:</strong> ${data.detected_topics.join(', ')}
+                            ${data.topic_filtered ? ' <span class="badge bg-success">Gefiltert</span>' : ''}
+                        </div>`;
+                    }
+                    
+                    // Add answer
+                    let response = topicsInfo + `<strong>🤖 Antwort:</strong><br>${data.answer}`;
+                    
+                    // Add sources if available
+                    if (data.sources && data.sources.length > 0) {
+                        response += '<br><br><strong>📺 Relevante Videos:</strong>';
+                        data.sources.forEach((source, index) => {
+                            response += `
+                                <div class="source-video">
+                                    <strong>${index + 1}. ${source.title}</strong>
+                                    <span class="similarity-badge">${(source.similarity * 100).toFixed(0)}% Match</span>
+                                    <br><small>${source.summary}</small>
+                                    <br><a href="${source.url}" target="_blank" class="btn btn-sm btn-outline-primary mt-1">
+                                        <i class="fas fa-external-link-alt"></i> Video öffnen
+                                    </a>
+                                </div>
+                            `;
+                        });
+                    }
+                    
+                    // Add video info for transcript mode
+                    if (data.video_info) {
+                        response += `<br><br><strong>📹 Video:</strong> ${data.video_info.title}`;
+                    }
+                    
+                    addMessage('bot', response);
+                    questionCount++;
+                    document.getElementById('questionsAsked').textContent = questionCount;
+                } else {
+                    addMessage('bot', `❌ Fehler: ${data.message || 'Unbekannter Fehler'}`);
+                }
+            })
+            .catch(error => {
+                document.getElementById(loadingId).remove();
+                addMessage('bot', `❌ Verbindungsfehler: ${error.message}`);
+            });
+        }
+        
+        function addMessage(type, content) {
+            const chatContainer = document.getElementById('chatContainer');
+            const messageId = 'msg_' + Date.now();
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.id = messageId;
+            messageDiv.className = `message ${type}-message`;
+            messageDiv.innerHTML = type === 'user' ? 
+                `<strong>Du:</strong><br>${content}` : content;
+            
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            return messageId;
+        }
+        
+        // Enter key support
+        document.getElementById('questionInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendQuestion();
+            }
+        });
+    </script>
+</body>
+</html>

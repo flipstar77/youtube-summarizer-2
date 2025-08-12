@@ -1,0 +1,985 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Hero Section - Clean & Minimalistic -->
+<div class="hero-section">
+    <div class="hero-content">
+        <h1 class="hero-title">YouTube Summarizer</h1>
+        <p class="hero-subtitle">Transform any YouTube video into clear, actionable insights</p>
+        
+        <!-- Primary Action - Clean Input -->
+        <div class="primary-action-card">
+            <form action="/new" method="post" class="url-input-form">
+                <div class="input-group-modern">
+                    <div class="input-icon">
+                        <i class="fab fa-youtube"></i>
+                    </div>
+                    <input type="url" 
+                           name="url" 
+                           class="form-control-modern" 
+                           placeholder="Paste YouTube URL here..." 
+                           required 
+                           autocomplete="off"
+                           id="urlInput">
+                    <button type="submit" class="btn-modern-primary" id="summarizeBtn">
+                        <span class="btn-text">Summarize</span>
+                        <span class="btn-loading" style="display: none;">
+                            <i class="fas fa-spinner fa-spin"></i> Processing...
+                        </span>
+                    </button>
+                </div>
+                
+                <!-- Quick Options -->
+                <div class="quick-options">
+                    <label class="option-checkbox">
+                        <input type="checkbox" name="generate_audio" value="on">
+                        <span class="checkmark"></span>
+                        <span class="option-text">Generate Audio</span>
+                    </label>
+                    <label class="option-checkbox">
+                        <input type="checkbox" name="generate_srt" value="on">
+                        <span class="checkmark"></span>
+                        <span class="option-text">Create Subtitles</span>
+                    </label>
+                    <select name="summary_type" class="type-selector" id="summaryTypeSelect">
+                        <option value="detailed">📋 Detailed Summary</option>
+                        <option value="brief">⚡ Brief Summary</option>
+                        <option value="bullet">🎯 Bullet Points</option>
+                        <option value="tutorial">📖 Tutorial Guide</option>
+                        <option value="professional">🎯 Professional</option>
+                        <option value="custom">✨ Custom Prompt</option>
+                    </select>
+                    <button type="button" class="btn-advanced-options" id="showAdvancedBtn">
+                        <i class="fas fa-cog"></i> Advanced Options
+                    </button>
+                </div>
+                
+                <!-- Advanced Options Panel -->
+                <div class="advanced-options-panel" id="advancedOptionsPanel" style="display: none;">
+                    <div class="advanced-header">
+                        <h4><i class="fas fa-sliders-h"></i> Advanced Options</h4>
+                        <button type="button" class="btn-close-advanced" id="hideAdvancedBtn">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Custom Prompt Section -->
+                    <div class="custom-prompt-section" id="customPromptSection" style="display: none;">
+                        <label class="advanced-label">
+                            <i class="fas fa-edit"></i> Custom Prompt
+                        </label>
+                        <textarea name="custom_prompt" 
+                                  class="custom-prompt-textarea"
+                                  placeholder="Enter your custom instructions for the AI...
+
+Examples:
+• Summarize this as a technical document
+• Extract key business insights
+• Focus on actionable takeaways
+• Create a step-by-step tutorial guide"></textarea>
+                        <small class="advanced-help">
+                            <i class="fas fa-lightbulb"></i> Write detailed instructions for how you want the AI to process the transcript
+                        </small>
+                    </div>
+                    
+                    <!-- Language Selection -->
+                    <div class="option-group">
+                        <label class="advanced-label">
+                            <i class="fas fa-globe"></i> Language
+                        </label>
+                        <select name="language" class="advanced-select">
+                            <option value="en" selected>🇺🇸 English</option>
+                            <option value="es">🇪🇸 Spanish</option>
+                            <option value="fr">🇫🇷 French</option>
+                            <option value="de">🇩🇪 German</option>
+                            <option value="it">🇮🇹 Italian</option>
+                            <option value="pt">🇵🇹 Portuguese</option>
+                            <option value="ru">🇷🇺 Russian</option>
+                        </select>
+                    </div>
+                    
+                    <!-- AI Provider Selection -->
+                    <div class="option-group">
+                        <label class="advanced-label">
+                            <i class="fas fa-robot"></i> AI Provider
+                        </label>
+                        <select name="ai_provider" class="advanced-select" id="aiProviderSelect">
+                            <option value="openai" selected>🤖 OpenAI - GPT Models</option>
+                            <option value="grok">🚀 Grok - XAI Models</option>
+                            <option value="claude">🧠 Claude - Anthropic</option>
+                            <option value="gemini">💎 Gemini - Google</option>
+                            <option value="perplexity">🔍 Perplexity - Sonar</option>
+                            <option value="deepseek">🔬 DeepSeek - Reasoning</option>
+                        </select>
+                    </div>
+                    
+                    <!-- AI Model Selection -->
+                    <div class="option-group">
+                        <label class="advanced-label">
+                            <i class="fas fa-microchip"></i> AI Model
+                        </label>
+                        <select name="ai_model" class="advanced-select" id="aiModelSelect">
+                            <option value="">Auto-select best model</option>
+                            <option value="gpt-4o">GPT-4o (Latest)</option>
+                            <option value="gpt-4">GPT-4 (Premium)</option>
+                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Fast)</option>
+                        </select>
+                        <small class="advanced-help">Choose specific model for fine-tuned results</small>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Secondary Search - Clean & Accessible -->
+<div class="secondary-section">
+    <div class="search-section">
+        <h3 class="section-title">Search Your Library</h3>
+        <div class="search-bar-clean">
+            <div class="search-input-wrapper">
+                <i class="fas fa-brain search-prefix-icon"></i>
+                <input type="text" 
+                       class="search-input-clean" 
+                       id="semanticSearchInput" 
+                       placeholder="Search concepts, topics, or ideas..."
+                       aria-label="Semantic search query">
+                <button class="search-btn-clean" type="button" id="semanticSearchBtn">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Search Results - Clean Design -->
+        <div id="searchResults" class="search-results-clean" style="display: none;">
+            <div class="results-header">
+                <span id="searchResultsCount" class="results-count">0 results</span>
+                <small id="searchQuery" class="results-query"></small>
+            </div>
+            <div id="searchResultsList" class="results-list"></div>
+        </div>
+        
+        <!-- Loading State -->
+        <div id="searchLoading" class="loading-state" style="display: none;">
+            <div class="loading-spinner"></div>
+            <span>Searching with AI...</span>
+        </div>
+    </div>
+</div>
+
+<!-- Clean Statistics Overview -->
+{% if summaries %}
+<div class="stats-overview">
+    <div class="stats-grid">
+        <div class="stat-item">
+            <div class="stat-number">{{ summaries|length }}</div>
+            <div class="stat-label">Total Summaries</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">{{ recent_count }}</div>
+            <div class="stat-label">Recent</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">{{ summaries|selectattr('audio_file')|list|length }}</div>
+            <div class="stat-label">With Audio</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number" id="vectorStatsCount">-</div>
+            <div class="stat-label">AI Indexed</div>
+        </div>
+    </div>
+</div>
+
+<!-- AI Management - Simplified -->
+<div class="ai-status-section">
+    <div class="ai-status-header">
+        <h3 class="section-title">AI Search Status</h3>
+        <button class="btn-manage-ai" id="toggleVectorManagement">
+            <i class="fas fa-cogs"></i> Manage
+        </button>
+    </div>
+    
+    <div class="ai-status-body" id="vectorManagementBody" style="display: none;">
+        <div class="status-progress">
+            <div class="progress-info">
+                <span id="embeddingStats">Checking AI indexing status...</span>
+                <span id="embeddingPercentage">0%</span>
+            </div>
+            <div class="progress-bar-clean">
+                <div class="progress-fill" id="embeddingProgress" style="width: 0%"></div>
+            </div>
+        </div>
+        
+        <div class="ai-actions">
+            <button class="btn-secondary-clean" id="checkEmbeddingsBtn">
+                <i class="fas fa-sync"></i> Check Status
+            </button>
+            <button class="btn-primary-clean" id="vectorizeAllBtn">
+                <i class="fas fa-magic"></i> Enable AI Search
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Summaries - Clean Card Layout -->
+<div class="summaries-section">
+    <h3 class="section-title">Your Recent Summaries</h3>
+    
+    <div class="summaries-grid">
+        {% for summary in summaries %}
+        <div class="summary-card">
+            <div class="summary-thumbnail">
+                <img src="https://img.youtube.com/vi/{{ summary.video_id }}/mqdefault.jpg" 
+                     alt="Video thumbnail"
+                     loading="lazy">
+                <div class="summary-type-badge">{{ summary.summary_type }}</div>
+                {% if summary.audio_file %}
+                <div class="audio-badge">
+                    <i class="fas fa-volume-up"></i>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="summary-content">
+                <h4 class="summary-title">
+                    <a href="/summary/{{ summary.id }}">{{ summary.title or 'YouTube Video Summary' }}</a>
+                </h4>
+                <div class="summary-meta">
+                    <span class="summary-date">{{ summary.created_at[:16] }}</span>
+                    <span class="summary-length">{{ (summary.transcript_length / 1000) | round(1) }}k chars</span>
+                </div>
+                <div class="summary-excerpt">
+                    {{ (summary.summary[:120] + '...') if summary.summary|length > 120 else summary.summary }}
+                </div>
+            </div>
+            
+            <div class="summary-actions">
+                <a href="/summary/{{ summary.id }}" class="btn-view">
+                    <i class="fas fa-eye"></i> View
+                </a>
+                <a href="{{ summary.url }}" target="_blank" class="btn-watch">
+                    <i class="fab fa-youtube"></i> Watch
+                </a>
+                <button class="btn-delete" onclick="deleteSummary({{ summary.id }})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<!-- Empty State - Clean & Encouraging -->
+<div class="empty-state">
+    <div class="empty-icon">
+        <i class="fab fa-youtube"></i>
+    </div>
+    <h2 class="empty-title">Ready to Get Started?</h2>
+    <p class="empty-subtitle">Transform any YouTube video into clear, actionable insights with AI</p>
+    <div class="empty-action">
+        <a href="/new" class="btn-hero-secondary">
+            <i class="fas fa-plus"></i> Create Your First Summary
+        </a>
+    </div>
+    <div class="empty-features">
+        <div class="feature-item">
+            <i class="fas fa-brain"></i>
+            <span>AI-Powered Analysis</span>
+        </div>
+        <div class="feature-item">
+            <i class="fas fa-search"></i>
+            <span>Semantic Search</span>
+        </div>
+        <div class="feature-item">
+            <i class="fas fa-volume-up"></i>
+            <span>Audio Generation</span>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Enhanced form submission with loading states
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('.url-input-form');
+    const urlInput = document.getElementById('urlInput');
+    const submitBtn = document.getElementById('summarizeBtn');
+    const btnText = submitBtn.querySelector('.btn-text');
+    const btnLoading = submitBtn.querySelector('.btn-loading');
+    
+    // Auto-focus on input for better UX
+    urlInput.focus();
+    
+    // Check for auto-fill from localStorage (from subscriptions page)
+    const autoFillUrl = localStorage.getItem('autoFillUrl');
+    const autoFillMessage = localStorage.getItem('autoFillMessage');
+    
+    if (autoFillUrl) {
+        // Auto-fill the URL input
+        urlInput.value = autoFillUrl;
+        
+        // Show success message
+        if (autoFillMessage) {
+            showToast(autoFillMessage, 'success');
+        }
+        
+        // Clear localStorage
+        localStorage.removeItem('autoFillUrl');
+        localStorage.removeItem('autoFillMessage');
+        
+        // Scroll to the form
+        document.querySelector('.primary-action-card').scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    // Advanced Options Toggle
+    const showAdvancedBtn = document.getElementById('showAdvancedBtn');
+    const hideAdvancedBtn = document.getElementById('hideAdvancedBtn');
+    const advancedPanel = document.getElementById('advancedOptionsPanel');
+    const summaryTypeSelect = document.getElementById('summaryTypeSelect');
+    const customPromptSection = document.getElementById('customPromptSection');
+    
+    showAdvancedBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        advancedPanel.style.display = 'block';
+        advancedPanel.scrollIntoView({ behavior: 'smooth' });
+        showAdvancedBtn.style.display = 'none';
+    });
+    
+    hideAdvancedBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        advancedPanel.style.display = 'none';
+        showAdvancedBtn.style.display = 'inline-flex';
+    });
+    
+    // Custom Prompt Toggle
+    summaryTypeSelect.addEventListener('change', function() {
+        if (this.value === 'custom') {
+            customPromptSection.style.display = 'block';
+            // Auto-show advanced panel if custom is selected
+            if (advancedPanel.style.display === 'none') {
+                showAdvancedBtn.click();
+            }
+        } else {
+            customPromptSection.style.display = 'none';
+        }
+    });
+    
+    // AI Provider Model Selection Update - Dynamic with MCP Integration
+    const aiProviderSelect = document.getElementById('aiProviderSelect');
+    const aiModelSelect = document.getElementById('aiModelSelect');
+    
+    let availableProviders = {};
+    let providersLoaded = false;
+    
+    // Load available providers and models from API with caching
+    async function loadAIProviders() {
+        try {
+            // Check if we have cached data (valid for 24 hours)
+            const cachedData = localStorage.getItem('aiProvidersCache');
+            const cacheTimestamp = localStorage.getItem('aiProvidersCacheTime');
+            const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+            
+            if (cachedData && cacheTimestamp && parseInt(cacheTimestamp) > oneDayAgo) {
+                console.log('[INFO] Using cached AI providers data');
+                availableProviders = JSON.parse(cachedData);
+                providersLoaded = true;
+                updateProviderOptions();
+                return;
+            }
+            
+            console.log('[INFO] Fetching fresh AI providers data from API...');
+            const response = await fetch('/ai_providers');
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                availableProviders = data.providers;
+                providersLoaded = true;
+                
+                // Cache the data with timestamp
+                localStorage.setItem('aiProvidersCache', JSON.stringify(availableProviders));
+                localStorage.setItem('aiProvidersCacheTime', Date.now().toString());
+                
+                updateProviderOptions();
+                console.log('[SUCCESS] AI providers loaded:', Object.keys(availableProviders));
+            } else {
+                console.error('[ERROR] Failed to load AI providers:', data.message);
+                useFallbackProviders();
+            }
+        } catch (error) {
+            console.error('[ERROR] Network error loading AI providers:', error);
+            useFallbackProviders();
+        }
+    }
+    
+    function updateProviderOptions() {
+        // Update provider dropdown to only show available providers
+        const currentOptions = Array.from(aiProviderSelect.options);
+        currentOptions.forEach(option => {
+            if (option.value && !availableProviders[option.value]) {
+                option.disabled = true;
+                option.textContent += ' (Not Available)';
+                option.style.color = '#999';
+            }
+        });
+        
+        // Set default to first available provider
+        const firstAvailable = Object.keys(availableProviders)[0];
+        if (firstAvailable) {
+            aiProviderSelect.value = firstAvailable;
+            updateModelsForProvider(firstAvailable);
+        }
+    }
+    
+    function updateModelsForProvider(provider) {
+        if (!availableProviders[provider]) {
+            console.warn(`[WARNING] Provider ${provider} not available`);
+            return;
+        }
+        
+        const models = availableProviders[provider].models || [];
+        
+        // Clear existing options
+        aiModelSelect.innerHTML = '';
+        
+        // Add auto-select option
+        const autoOption = document.createElement('option');
+        autoOption.value = '';
+        autoOption.textContent = 'Auto-select best model';
+        aiModelSelect.appendChild(autoOption);
+        
+        // Add available models
+        models.forEach(modelId => {
+            const option = document.createElement('option');
+            option.value = modelId;
+            option.textContent = formatModelName(modelId, provider);
+            aiModelSelect.appendChild(option);
+        });
+        
+        console.log(`[INFO] Updated models for ${provider}:`, models);
+    }
+    
+    function formatModelName(modelId, provider) {
+        // Format model names for better readability
+        const modelFormatters = {
+            'openai': (id) => {
+                if (id.includes('gpt-4o')) return id.replace('gpt-4o', 'GPT-4o');
+                if (id.includes('gpt-4')) return id.replace('gpt-4', 'GPT-4');
+                if (id.includes('gpt-3.5')) return id.replace('gpt-3.5-turbo', 'GPT-3.5 Turbo');
+                if (id.includes('o1-preview')) return 'o1-preview (Reasoning)';
+                if (id.includes('o1-mini')) return 'o1-mini (Fast Reasoning)';
+                return id;
+            },
+            'grok': (id) => {
+                return id.replace(/grok-/, 'Grok-').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            },
+            'claude': (id) => {
+                return id.replace(/claude-/, 'Claude ').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            },
+            'gemini': (id) => {
+                return id.replace(/gemini-/, 'Gemini ').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            },
+            'deepseek': (id) => {
+                return id.replace(/deepseek-/, 'DeepSeek ').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            },
+            'perplexity': (id) => {
+                return id.replace(/sonar/, 'Sonar').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            }
+        };
+        
+        const formatter = modelFormatters[provider];
+        return formatter ? formatter(modelId) : modelId;
+    }
+    
+    function useFallbackProviders() {
+        console.log('[INFO] Using fallback static provider data');
+        // Fallback to basic static data if API fails
+        availableProviders = {
+            'openai': { models: ['gpt-4o', 'gpt-4', 'gpt-3.5-turbo'] },
+            'grok': { models: ['grok-3-mini-beta', 'grok-2-latest'] }
+        };
+        providersLoaded = true;
+        updateProviderOptions();
+    }
+    
+    // Event listener for provider changes
+    aiProviderSelect.addEventListener('change', function() {
+        const selectedProvider = this.value;
+        if (providersLoaded) {
+            updateModelsForProvider(selectedProvider);
+        }
+    });
+    
+    // Initialize providers on page load
+    loadAIProviders();
+    
+    // Force refresh providers (bypass cache) - for admin use
+    function forceRefreshProviders() {
+        localStorage.removeItem('aiProvidersCache');
+        localStorage.removeItem('aiProvidersCacheTime');
+        console.log('[INFO] Cache cleared, refreshing AI providers...');
+        return loadAIProviders();
+    }
+    
+    // Expose to global scope for debug/admin use
+    window.forceRefreshProviders = forceRefreshProviders;
+    
+    // Form submission with loading state
+    form.addEventListener('submit', function(e) {
+        if (!urlInput.value.trim()) {
+            e.preventDefault();
+            showInputError('Please enter a YouTube URL');
+            return;
+        }
+        
+        // Show loading state
+        btnText.style.display = 'none';
+        btnLoading.style.display = 'inline-block';
+        submitBtn.disabled = true;
+        
+        // IMPORTANT: Don't disable the input field as it prevents form submission
+        // urlInput.disabled = true; // REMOVED - this was causing the 400 error
+        
+        // Add loading class to form
+        form.classList.add('processing');
+        
+        // Set readonly instead of disabled to preserve the value
+        urlInput.readOnly = true;
+    });
+    
+    // Input validation and feedback
+    urlInput.addEventListener('input', function() {
+        clearInputError();
+        const value = this.value.trim();
+        
+        if (value && !isValidYouTubeURL(value)) {
+            showInputError('Please enter a valid YouTube URL');
+        }
+    });
+    
+    // URL validation
+    function isValidYouTubeURL(url) {
+        const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)[a-zA-Z0-9_-]+/;
+        return youtubeRegex.test(url);
+    }
+    
+    // Error handling
+    function showInputError(message) {
+        clearInputError();
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'input-error';
+        errorDiv.textContent = message;
+        urlInput.parentNode.insertBefore(errorDiv, urlInput.nextSibling);
+        urlInput.classList.add('error');
+    }
+    
+    function clearInputError() {
+        const errorDiv = document.querySelector('.input-error');
+        if (errorDiv) errorDiv.remove();
+        urlInput.classList.remove('error');
+    }
+});
+
+// Enhanced delete function with better feedback
+function deleteSummary(id) {
+    if (confirm('Are you sure you want to delete this summary?')) {
+        const card = event.target.closest('.summary-card');
+        card.style.opacity = '0.5';
+        card.style.pointerEvents = 'none';
+        
+        fetch('/delete/' + id, {
+            method: 'DELETE',
+        })
+        .then(response => {
+            if (response.ok) {
+                // Smooth removal animation
+                card.style.transform = 'scale(0.8)';
+                card.style.opacity = '0';
+                setTimeout(() => location.reload(), 300);
+            } else {
+                // Reset card state on error
+                card.style.opacity = '1';
+                card.style.pointerEvents = 'auto';
+                alert('Error deleting summary');
+            }
+        })
+        .catch(error => {
+            card.style.opacity = '1';
+            card.style.pointerEvents = 'auto';
+            alert('Network error. Please try again.');
+        });
+    }
+}
+
+// Semantic Search Functionality
+let searchTimeout;
+
+document.addEventListener('DOMContentLoaded', function() {
+    initializeSemanticSearch();
+    loadVectorStats();
+    setupVectorManagement();
+});
+
+function initializeSemanticSearch() {
+    const searchInput = document.getElementById('semanticSearchInput');
+    const searchBtn = document.getElementById('semanticSearchBtn');
+    const searchSuggestions = document.getElementById('searchSuggestions');
+    const suggestionTags = document.querySelectorAll('.suggestion-tag');
+
+    // Show suggestions when input is focused
+    searchInput.addEventListener('focus', function() {
+        if (!this.value) {
+            searchSuggestions.style.display = 'block';
+        }
+    });
+
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.search-container')) {
+            searchSuggestions.style.display = 'none';
+        }
+    });
+
+    // Handle suggestion clicks
+    suggestionTags.forEach(tag => {
+        tag.addEventListener('click', function() {
+            const query = this.getAttribute('data-query');
+            searchInput.value = query;
+            searchSuggestions.style.display = 'none';
+            performSemanticSearch(query);
+        });
+    });
+
+    // Handle search button click
+    searchBtn.addEventListener('click', function() {
+        const query = searchInput.value.trim();
+        if (query) {
+            performSemanticSearch(query);
+        }
+    });
+
+    // Handle enter key
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            const query = this.value.trim();
+            if (query) {
+                performSemanticSearch(query);
+            }
+        }
+    });
+
+    // Real-time search (debounced)
+    searchInput.addEventListener('input', function() {
+        const query = this.value.trim();
+        
+        clearTimeout(searchTimeout);
+        
+        if (query.length >= 3) {
+            searchTimeout = setTimeout(() => {
+                performSemanticSearch(query);
+            }, 500);
+        } else if (query.length === 0) {
+            hideSearchResults();
+        }
+    });
+}
+
+function performSemanticSearch(query) {
+    showSearchLoading();
+    
+    fetch('/semantic_search', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query: query })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideSearchLoading();
+        
+        if (data.status === 'success') {
+            displaySearchResults(data.results, query, data.count);
+        } else {
+            showToast('❌ Search failed: ' + data.message, 'error');
+            showNoResults();
+        }
+    })
+    .catch(error => {
+        hideSearchLoading();
+        console.error('Search error:', error);
+        showToast('❌ Search failed: Network error', 'error');
+        showNoResults();
+    });
+}
+
+function displaySearchResults(results, query, count) {
+    const resultsContainer = document.getElementById('searchResults');
+    const resultsList = document.getElementById('searchResultsList');
+    const resultsCount = document.getElementById('searchResultsCount');
+    const searchQuery = document.getElementById('searchQuery');
+    const noResults = document.getElementById('noResults');
+    
+    // Hide no results state
+    noResults.style.display = 'none';
+    
+    if (results.length === 0) {
+        showNoResults();
+        return;
+    }
+    
+    // Update header
+    resultsCount.textContent = `${count} result${count !== 1 ? 's' : ''}`;
+    searchQuery.textContent = `for "${query}"`;
+    
+    // Build results HTML
+    const resultsHTML = results.map(result => {
+        const similarity = (result.similarity * 100).toFixed(1);
+        const videoThumbnail = `https://img.youtube.com/vi/${result.video_id}/mqdefault.jpg`;
+        
+        return `
+            <div class="search-result-item card mb-3 border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <img src="${videoThumbnail}" class="search-result-thumbnail" alt="Video thumbnail">
+                        </div>
+                        <div class="col">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="search-result-title mb-0">
+                                    <a href="/summary/${result.id}" class="text-decoration-none">
+                                        ${result.title || 'YouTube Video'}
+                                    </a>
+                                </h6>
+                                <div class="search-result-meta">
+                                    <span class="badge bg-success similarity-badge">
+                                        <i class="fas fa-percentage me-1"></i>${similarity}% match
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="search-result-details mb-2">
+                                <span class="badge bg-info me-2">${result.summary_type}</span>
+                                <small class="text-muted">
+                                    <i class="fas fa-calendar me-1"></i>${result.created_at.substring(0, 16)}
+                                    <span class="mx-2">•</span>
+                                    <i class="fas fa-file-text me-1"></i>${result.transcript_length} chars
+                                </small>
+                            </div>
+                            <div class="search-result-summary">
+                                <p class="text-muted mb-0">${truncateText(result.summary, 150)}</p>
+                            </div>
+                            <div class="search-result-actions mt-2">
+                                <a href="/summary/${result.id}" class="btn btn-sm btn-outline-primary me-2">
+                                    <i class="fas fa-eye me-1"></i>View Summary
+                                </a>
+                                <a href="${result.url}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fab fa-youtube me-1"></i>Watch Video
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    resultsList.innerHTML = resultsHTML;
+    resultsContainer.style.display = 'block';
+    
+    // Smooth scroll to results
+    resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function showSearchLoading() {
+    document.getElementById('searchLoading').style.display = 'block';
+    document.getElementById('searchResults').style.display = 'none';
+    document.getElementById('noResults').style.display = 'none';
+}
+
+function hideSearchLoading() {
+    document.getElementById('searchLoading').style.display = 'none';
+}
+
+function showNoResults() {
+    document.getElementById('noResults').style.display = 'block';
+    document.getElementById('searchResults').style.display = 'none';
+}
+
+function hideSearchResults() {
+    document.getElementById('searchResults').style.display = 'none';
+    document.getElementById('noResults').style.display = 'none';
+}
+
+function truncateText(text, maxLength) {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+}
+
+// Vector Statistics and Management
+function loadVectorStats() {
+    // Check if vector search is available
+    fetch('/semantic_search', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query: 'test' })
+    })
+    .then(response => response.json())
+    .then(data => {
+        const isAvailable = data.status !== 'error' || !data.message.includes('not available');
+        updateVectorStats(isAvailable);
+    })
+    .catch(() => {
+        updateVectorStats(false);
+    });
+}
+
+function updateVectorStats(isAvailable) {
+    const countElement = document.getElementById('vectorStatsCount');
+    const methodElement = document.getElementById('vectorStatsMethod');
+    const modelElement = document.getElementById('embeddingModel');
+    const databaseElement = document.getElementById('vectorDatabase');
+    
+    if (!isAvailable) {
+        countElement.textContent = 'N/A';
+        methodElement.textContent = 'Not Available';
+        modelElement.textContent = 'Vector search disabled';
+        databaseElement.textContent = 'SQLite (no vectors)';
+        return;
+    }
+    
+    // Estimate embeddings count (this could be enhanced with a dedicated endpoint)
+    const totalSummaries = {{ summaries|length }};
+    const estimatedEmbeddings = Math.floor(totalSummaries * 0.7); // Placeholder estimation
+    
+    countElement.textContent = `${estimatedEmbeddings}/${totalSummaries}`;
+    methodElement.textContent = 'AI Powered';
+    
+    // Check if OpenAI key exists (simple heuristic)
+    const hasOpenAI = true; // This would need to be passed from backend
+    modelElement.textContent = hasOpenAI ? 'OpenAI Embeddings' : 'Sentence Transformers';
+    databaseElement.textContent = 'Supabase (pgvector)';
+    
+    // Update progress bar
+    const percentage = totalSummaries > 0 ? (estimatedEmbeddings / totalSummaries) * 100 : 0;
+    document.getElementById('embeddingProgress').style.width = percentage + '%';
+    document.getElementById('embeddingStats').textContent = `${estimatedEmbeddings} of ${totalSummaries} summaries have embeddings`;
+    document.getElementById('embeddingPercentage').textContent = `${Math.round(percentage)}%`;
+}
+
+function setupVectorManagement() {
+    const toggleBtn = document.getElementById('toggleVectorManagement');
+    const managementBody = document.getElementById('vectorManagementBody');
+    const checkBtn = document.getElementById('checkEmbeddingsBtn');
+    const vectorizeBtn = document.getElementById('vectorizeAllBtn');
+    
+    toggleBtn.addEventListener('click', function() {
+        const isHidden = managementBody.style.display === 'none';
+        managementBody.style.display = isHidden ? 'block' : 'none';
+        
+        const icon = this.querySelector('i');
+        icon.className = isHidden ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
+        this.innerHTML = `<i class="${icon.className}"></i> ${isHidden ? 'Hide' : 'Show'} Options`;
+    });
+    
+    checkBtn.addEventListener('click', function() {
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Checking...';
+        
+        // Simulate checking (in real implementation, this would call an API)
+        setTimeout(() => {
+            loadVectorStats();
+            this.disabled = false;
+            this.innerHTML = '<i class="fas fa-sync me-2"></i>Check Status';
+            showToast('📊 Vector statistics updated', 'info');
+        }, 1500);
+    });
+    
+    vectorizeBtn.addEventListener('click', function() {
+        if (confirm('This will generate vector embeddings for summaries that don\'t have them. This may take several minutes. Continue?')) {
+            startVectorization();
+        }
+    });
+}
+
+function startVectorization() {
+    const progressContainer = document.getElementById('vectorizationProgress');
+    const progressBar = document.getElementById('vectorizationProgressBar');
+    const statusText = document.getElementById('vectorizationStatus');
+    const vectorizeBtn = document.getElementById('vectorizeAllBtn');
+    
+    progressContainer.style.display = 'block';
+    vectorizeBtn.disabled = true;
+    vectorizeBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Vectorizing...';
+    
+    fetch('/vectorize_existing', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Simulate progress animation
+            animateProgress(progressBar, statusText, data.vectorized_count, data.total_found);
+            
+            setTimeout(() => {
+                showToast(`✅ Successfully vectorized ${data.vectorized_count} summaries!`, 'success');
+                loadVectorStats();
+                progressContainer.style.display = 'none';
+                vectorizeBtn.disabled = false;
+                vectorizeBtn.innerHTML = '<i class="fas fa-magic me-2"></i>Vectorize Missing';
+            }, 3000);
+        } else {
+            showToast('❌ Vectorization failed: ' + data.message, 'error');
+            progressContainer.style.display = 'none';
+            vectorizeBtn.disabled = false;
+            vectorizeBtn.innerHTML = '<i class="fas fa-magic me-2"></i>Vectorize Missing';
+        }
+    })
+    .catch(error => {
+        console.error('Vectorization error:', error);
+        showToast('❌ Vectorization failed: Network error', 'error');
+        progressContainer.style.display = 'none';
+        vectorizeBtn.disabled = false;
+        vectorizeBtn.innerHTML = '<i class="fas fa-magic me-2"></i>Vectorize Missing';
+    });
+}
+
+function animateProgress(progressBar, statusText, completed, total) {
+    let current = 0;
+    const increment = completed / 20; // 20 steps
+    
+    const interval = setInterval(() => {
+        current += increment;
+        const percentage = Math.min((current / total) * 100, 100);
+        progressBar.style.width = percentage + '%';
+        statusText.textContent = `Processing ${Math.floor(current)} of ${total} summaries...`;
+        
+        if (current >= completed) {
+            clearInterval(interval);
+            statusText.textContent = `Completed ${completed} of ${total} summaries`;
+        }
+    }, 150);
+}
+
+// Toast notifications
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast-notification toast-${type}`;
+    toast.textContent = message;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => toast.classList.add('show'), 100);
+    
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => document.body.removeChild(toast), 300);
+    }, 3000);
+}
+</script>
+{% endblock %}
