@@ -17,6 +17,7 @@ from video_highlight_extractor import VideoHighlightExtractor
 from channel_subscriptions import ChannelSubscriptionManager
 from settings_manager import SettingsManager
 from automation_scheduler import AutomationScheduler
+from srt_chaptering import SRTChapteringSystem
 
 load_dotenv()
 
@@ -111,9 +112,19 @@ def new_summary():
         return render_template('new_summary.html', voices=voices, timestamp=int(time.time()))
     
     try:
-        # Get form data
+        # Debug logging for form data
+        print(f"[DEBUG] Request method: {request.method}")
+        print(f"[DEBUG] Request form keys: {list(request.form.keys())}")
+        print(f"[DEBUG] Request content type: {request.content_type}")
+        
+        # Get form data with better error handling
+        if 'url' not in request.form:
+            print(f"[ERROR] URL field missing from form. Available fields: {list(request.form.keys())}")
+            flash('Error: URL field is missing from the form submission', 'danger')
+            return redirect(url_for('index'))
+        
         url = request.form['url']
-        summary_type = request.form['summary_type']
+        summary_type = request.form.get('summary_type', 'detailed')
         language = request.form.get('language', 'en')
         generate_audio = request.form.get('generate_audio') == 'on'
         generate_srt = request.form.get('generate_srt') == 'on'
@@ -211,7 +222,9 @@ def new_summary():
                     audio_file=audio_file,
                     voice_id=voice_id if audio_file else None,
                     uploader=uploader,
-                    duration=duration
+                    duration=duration,
+                    ai_provider=ai_provider,  # Save AI provider
+                    ai_model=ai_model  # Save AI model
                 )
             else:
                 summary_id = db.save_summary(
@@ -224,7 +237,9 @@ def new_summary():
                     audio_file=audio_file,
                     voice_id=voice_id if audio_file else None,
                     uploader=uploader,
-                    duration=duration
+                    duration=duration,
+                    ai_provider=ai_provider,  # Save AI provider
+                    ai_model=ai_model  # Save AI model
                 )
         except Exception as e:
             # Fallback to basic save without vectors/metadata if schema issues
@@ -865,6 +880,13 @@ except Exception as e:
     print(f"[WARNING] Highlight Extractor disabled: {str(e)}")
 
 try:
+    srt_chaptering = SRTChapteringSystem()
+    print("[OK] SRT Chaptering System initialized")
+except Exception as e:
+    print(f"[WARNING] SRT Chaptering System disabled: {str(e)}")
+    srt_chaptering = None
+
+try:
     subscription_manager = ChannelSubscriptionManager()
     print("[OK] Channel Subscription Manager initialized")
 except Exception as e:
@@ -1038,7 +1060,7 @@ def api_chat_transcript():
 
 @app.route('/extract_highlights/<int:summary_id>', methods=['POST'])
 def extract_highlights(summary_id):
-    """Extrahiert Highlights aus einem Video"""
+    """Extrahiert Highlights aus einem Video - Async mit verbessertem Error Handling"""
     try:
         if not highlight_extractor:
             return jsonify({
@@ -1062,20 +1084,70 @@ def extract_highlights(summary_id):
         # Hole SRT-Content falls verfügbar
         srt_content = None
         if hasattr(summary, 'get') and summary.get('transcript'):
-            # Konvertiere Transcript zu SRT-Format (vereinfacht)
             srt_content = summary.get('transcript')
         
         print(f"[INFO] Starte Highlight-Extraktion für Video-ID: {summary['video_id']}")
         
-        # Extrahiere Highlights - übergebe die Database-ID für besseres Lookup
-        result = highlight_extractor.extract_highlights_from_video(
-            video_id=str(summary_id),  # Verwende die Database-ID  
-            video_url=summary['url'],
-            srt_content=srt_content,
-            highlight_count=highlight_count,
-            min_duration=min_duration,
-            max_duration=max_duration
-        )
+        # Check if we already have highlights for this video
+        highlights_data_dir = "D:/mcp/highlights_data"
+        existing_files = []
+        if os.path.exists(highlights_data_dir):
+            existing_files = [f for f in os.listdir(highlights_data_dir) 
+                            if f.startswith(f"highlights_{summary_id}_") and f.endswith('.json')]
+        
+        if existing_files:
+            # Load most recent existing highlights
+            latest_file = max(existing_files)
+            try:
+                with open(os.path.join(highlights_data_dir, latest_file), 'r', encoding='utf-8') as f:
+                    existing_data = json.load(f)
+                
+                return jsonify({
+                    'status': 'success',
+                    'message': f'Highlights bereits verfügbar ({existing_data.get("total_highlights", 0)} Highlights)',
+                    'clips': existing_data.get('clips', []),
+                    'compilation': existing_data.get('compilation'),
+                    'video_id': summary['video_id'],
+                    'title': summary['title'],
+                    'is_cached': True
+                })
+                
+            except Exception as e:
+                print(f"[WARNING] Existing highlights file corrupted: {e}")
+        
+        # Starte neue Extraktion mit besserer Error-Behandlung
+        try:
+            result = highlight_extractor.extract_highlights_from_video(
+                video_id=str(summary_id),
+                video_url=summary['url'],
+                srt_content=srt_content,
+                highlight_count=highlight_count,
+                min_duration=min_duration,
+                max_duration=max_duration
+            )
+        except Exception as extraction_error:
+            print(f"[ERROR] Highlight extraction failed: {str(extraction_error)}")
+            
+            # Return more specific error based on the failure
+            error_message = str(extraction_error)
+            if "Download" in error_message or "yt-dlp" in error_message:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Video-Download fehlgeschlagen. Überprüfe die Video-URL oder versuche es später erneut.',
+                    'error_type': 'download_failed'
+                }), 500
+            elif "Untertitel" in error_message or "SRT" in error_message:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Untertitel-Extraktion fehlgeschlagen. Video hat möglicherweise keine Untertitel.',
+                    'error_type': 'subtitle_failed'
+                }), 500
+            else:
+                return jsonify({
+                    'status': 'error',
+                    'message': f'Highlight-Extraktion fehlgeschlagen: {error_message}',
+                    'error_type': 'processing_failed'
+                }), 500
         
         # Speichere Highlight-Ergebnisse für Dashboard-Anzeige
         if result.get('status') == 'success':
@@ -1729,6 +1801,80 @@ def api_stats():
             'vector_embeddings': 0,
             'recent_summaries': 0
         })
+
+# SRT Chaptering Routes
+@app.route('/srt-chaptering')
+def srt_chaptering():
+    """SRT Upload and Chaptering page"""
+    return render_template('srt_chaptering.html')
+
+@app.route('/process_srt', methods=['POST'])
+def process_srt():
+    """Process uploaded SRT file and create chapters"""
+    try:
+        if 'srt_file' not in request.files:
+            return jsonify({'status': 'error', 'message': 'No SRT file uploaded'})
+        
+        file = request.files['srt_file']
+        if file.filename == '':
+            return jsonify({'status': 'error', 'message': 'No file selected'})
+        
+        if not file.filename.lower().endswith('.srt'):
+            return jsonify({'status': 'error', 'message': 'File must be an SRT file'})
+        
+        # Read file content
+        srt_content = file.read().decode('utf-8', errors='ignore')
+        
+        # Get form parameters
+        video_title = request.form.get('video_title', file.filename)
+        chapter_count = int(request.form.get('chapter_count', 8))
+        min_duration = int(request.form.get('min_duration', 60))
+        
+        print(f"[INFO] Processing SRT file: {file.filename}")
+        print(f"[INFO] Parameters: title={video_title}, chapters={chapter_count}, min_duration={min_duration}")
+        
+        # Import and use SRT chaptering system
+        from srt_chaptering import SRTChapteringSystem
+        chaptering_system = SRTChapteringSystem()
+        
+        # Process the SRT file
+        result = chaptering_system.create_chapters_from_srt(
+            srt_content=srt_content,
+            video_title=video_title,
+            chapter_count=chapter_count,
+            min_chapter_duration=min_duration
+        )
+        
+        if 'error' in result:
+            return jsonify({'status': 'error', 'message': result['error']})
+        
+        # Save result for download
+        saved_path = chaptering_system.save_chaptering_result(result, file.filename)
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'SRT file processed successfully',
+            'data': result,
+            'saved_path': saved_path
+        })
+        
+    except Exception as e:
+        print(f"[ERROR] SRT processing failed: {str(e)}")
+        return jsonify({'status': 'error', 'message': f'Processing failed: {str(e)}'})
+
+@app.route('/download_chapters/<filename>')
+def download_chapters(filename):
+    """Download chaptering result file"""
+    try:
+        file_path = os.path.join('D:/mcp/srt_uploads', filename)
+        if not os.path.exists(file_path):
+            return "File not found", 404
+        
+        return send_file(file_path, as_attachment=True)
+        
+    except Exception as e:
+        print(f"[ERROR] Chapter download failed: {e}")
+        return f"Download failed: {str(e)}", 500
 
 if __name__ == '__main__':
     # Check for required environment variables

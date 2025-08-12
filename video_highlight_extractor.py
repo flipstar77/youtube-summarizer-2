@@ -42,12 +42,12 @@ class VideoHighlightExtractor:
                                     min_duration: int = 10,
                                     max_duration: int = 60) -> Dict[str, Any]:
         """
-        Extrahiert Highlights aus einem Video
+        Extrahiert Highlights aus einem Video - Optimiert für Performance
         
         Args:
             video_id: YouTube Video ID
             video_url: YouTube URL
-            srt_content: SRT Untertitel (optional)
+            srt_content: SRT Untertitel oder Transcript (optional)
             highlight_count: Anzahl Highlights
             min_duration: Minimale Highlight-Dauer (Sekunden)
             max_duration: Maximale Highlight-Dauer (Sekunden)
@@ -55,16 +55,140 @@ class VideoHighlightExtractor:
         try:
             print(f"[INFO] Extrahiere Highlights aus Video-ID: {video_id}")
             
+            # Optimierung: Wenn transcript verfügbar ist, generiere SRT daraus statt Video herunterzuladen
+            if srt_content and len(srt_content.strip()) > 100:
+                print("[INFO] Verwende vorhandenen Transcript für Highlight-Extraktion")
+                
+                # Generiere SRT aus Transcript falls nötig
+                if not self._looks_like_srt(srt_content):
+                    print("[INFO] Konvertiere Transcript zu SRT-Format")
+                    srt_content = self._convert_transcript_to_srt(srt_content)
+                
+                segments = self._parse_srt_to_segments(srt_content)
+                if not segments:
+                    print("[WARNING] SRT-Parsing fehlgeschlagen, fallback zu Video-Download")
+                    return self._fallback_video_download_method(video_id, video_url, highlight_count, min_duration, max_duration)
+                
+                # AI-basierte Highlight-Analyse ohne Video-Download
+                highlight_segments = self._analyze_segments_for_highlights(
+                    segments, highlight_count, min_duration, max_duration
+                )
+                
+                # Erstelle Highlight-Info ohne tatsächliche Video-Clips (da kein Video heruntergeladen)
+                extracted_clips = []
+                for i, segment in enumerate(highlight_segments):
+                    clip_info = {
+                        "start_time": segment["start_time"],
+                        "end_time": segment["end_time"],
+                        "text": segment["text"],
+                        "score": segment.get("highlight_score", 0),
+                        "reason": segment.get("highlight_reason", ""),
+                        "duration": f"{segment.get('end_seconds', 0) - segment.get('start_seconds', 0):.1f}s",
+                        "clip_path": None,
+                        "status": "identified_only"  # Highlights identifiziert, aber Clips nicht extrahiert
+                    }
+                    extracted_clips.append(clip_info)
+                
+                # Generate intelligent video chapters
+                chapters_result = None
+                try:
+                    chapters_result = self.chaptering_system.create_video_chapters(
+                        video_id=video_id,
+                        transcript_text=transcript if 'transcript' in locals() else srt_content,
+                        chapter_count=6,
+                        min_duration=30
+                    )
+                    print(f"[INFO] Generated {chapters_result.get('total_chapters', 0)} video chapters")
+                except Exception as e:
+                    print(f"[WARNING] Chapter generation failed: {str(e)}")
+                
+                return {
+                    "status": "success",
+                    "video_id": video_id,
+                    "clips": extracted_clips,
+                    "compilation": None,
+                    "total_highlights": len(extracted_clips),
+                    "highlights_identified": len(extracted_clips),
+                    "clips_extracted": 0,  # No actual clips extracted in fast mode
+                    "clips_failed": 0,
+                    "chapters": chapters_result.get("chapters", []) if chapters_result else [],
+                    "processing_mode": "fast_transcript_only",
+                    "note": "Highlights identifiziert basierend auf Transcript. Für Video-Clips verwende 'Clip erstellen' Funktion."
+                }
+            
+            else:
+                # Fallback: Vollständiger Video-Download und Verarbeitung
+                print("[INFO] Kein Transcript verfügbar, starte vollständige Video-Verarbeitung")
+                return self._fallback_video_download_method(video_id, video_url, highlight_count, min_duration, max_duration)
+            
+        except Exception as e:
+            print(f"[ERROR] Highlight-Extraktion fehlgeschlagen: {str(e)}")
+            return {"error": str(e)}
+    
+    def _looks_like_srt(self, content: str) -> bool:
+        """Prüft ob Content bereits SRT-Format hat"""
+        lines = content.strip().split('\n')
+        if len(lines) < 3:
+            return False
+        
+        # Prüfe typische SRT-Struktur
+        return (lines[0].isdigit() and 
+                '-->' in lines[1] and 
+                len(lines) > 3)
+    
+    def _convert_transcript_to_srt(self, transcript: str) -> str:
+        """Konvertiert Transcript zu einfachem SRT-Format"""
+        try:
+            # Einfache Heuristik für SRT-Konvertierung
+            words = transcript.split()
+            srt_content = []
+            
+            segment_duration = 3  # 3 Sekunden pro Segment
+            words_per_segment = 15  # ~15 Wörter pro Segment
+            
+            for i in range(0, len(words), words_per_segment):
+                segment_words = words[i:i + words_per_segment]
+                text = ' '.join(segment_words)
+                
+                start_seconds = i // words_per_segment * segment_duration
+                end_seconds = start_seconds + segment_duration
+                
+                start_time = self._seconds_to_srt_time(start_seconds)
+                end_time = self._seconds_to_srt_time(end_seconds)
+                
+                srt_content.append(f"{i // words_per_segment + 1}")
+                srt_content.append(f"{start_time} --> {end_time}")
+                srt_content.append(text)
+                srt_content.append("")  # Leerzeile
+            
+            return '\n'.join(srt_content)
+            
+        except Exception as e:
+            print(f"[ERROR] Transcript zu SRT Konvertierung fehlgeschlagen: {e}")
+            return ""
+    
+    def _seconds_to_srt_time(self, seconds: int) -> str:
+        """Konvertiert Sekunden zu SRT-Zeitformat"""
+        hours = seconds // 3600
+        minutes = (seconds % 3600) // 60
+        secs = seconds % 60
+        return f"{hours:02d}:{minutes:02d}:{secs:02d},000"
+    
+    def _fallback_video_download_method(self, video_id: str, video_url: str, 
+                                      highlight_count: int, min_duration: int, 
+                                      max_duration: int) -> Dict[str, Any]:
+        """Fallback-Methode mit vollständigem Video-Download"""
+        try:
             # 1. Video herunterladen
             video_path = self._download_video(video_url, video_id)
             if not video_path:
                 return {"error": "Video Download fehlgeschlagen"}
             
-            # 2. SRT-Datei parsen oder generieren
-            if not srt_content:
-                srt_content = self._extract_subtitles(video_path, video_id)
+            # 2. SRT-Datei extrahieren
+            srt_content = self._extract_subtitles(video_path, video_id)
             
             if not srt_content:
+                print("[INFO] Keine Untertitel gefunden, generiere SRT aus Transcript...")
                 return {"error": "Keine Untertitel verfügbar und SRT-Generierung fehlgeschlagen"}
             
             # 3. SRT zu Segmenten parsen

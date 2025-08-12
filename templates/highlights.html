@@ -381,7 +381,13 @@
                                                                     <i class="fas fa-scissors"></i> Clip erstellen
                                                                 </button>
                                                             {% else %}
-                                                                <span class="badge bg-success">Clip verfügbar</span>
+                                                                <span class="badge bg-success">✓ Clip verfügbar</span>
+                                                                {% if highlight.clip_path %}
+                                                                    <a href="/download_highlight/{{ highlight.clip_path.split('/')[-1] }}" 
+                                                                       class="btn btn-sm btn-primary ms-2">
+                                                                        <i class="fas fa-download"></i> Download
+                                                                    </a>
+                                                                {% endif %}
                                                             {% endif %}
                                                         </div>
                                                     </div>
@@ -594,7 +600,12 @@
             const processingModal = new bootstrap.Modal(document.getElementById('processingModal'));
             processingModal.show();
             
-            // Start extraction
+            console.log('[DEBUG] Starting highlight extraction for video ID:', videoId);
+            
+            // Start extraction with extended timeout and better error handling
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minute timeout
+            
             fetch(`/extract_highlights/${videoId}`, {
                 method: 'POST',
                 headers: {
@@ -604,24 +615,57 @@
                     highlight_count: parseInt(highlightCount),
                     min_duration: parseInt(minDuration),
                     max_duration: parseInt(maxDuration)
-                })
+                }),
+                signal: controller.signal
             })
-            .then(response => response.json())
+            .then(response => {
+                clearTimeout(timeoutId);
+                console.log('[DEBUG] Response received, status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                return response.json();
+            })
             .then(data => {
                 processingModal.hide();
+                console.log('[DEBUG] Response data:', data);
                 
                 if (data.status === 'success') {
-                    // Show success notification
-                    showNotification('success', `Erfolg! ${data.message}`);
-                    // Reload page after short delay
-                    setTimeout(() => location.reload(), 1500);
+                    // Better messaging based on processing mode
+                    if (data.is_cached) {
+                        showNotification('info', `${data.message}. Verwende "Clip erstellen" Buttons um Video-Clips zu extrahieren.`);
+                    } else if (data.processing_mode === 'fast_transcript_only') {
+                        showNotification('success', `✅ Highlights identifiziert! Klicke auf "Clip erstellen" um einzelne Video-Clips herunterzuladen.`);
+                    } else {
+                        showNotification('success', `Erfolg! ${data.message}`);
+                    }
+                    setTimeout(() => location.reload(), 2000);
                 } else {
-                    showNotification('error', `Fehler: ${data.message}`);
+                    showNotification('error', `Fehler: ${data.message || 'Unbekannter Fehler'}`);
                 }
             })
             .catch(error => {
+                clearTimeout(timeoutId);
                 processingModal.hide();
-                showNotification('error', `Fehler bei der Verarbeitung: ${error.message}`);
+                
+                console.error('[ERROR] Highlight extraction failed:', error);
+                
+                let errorMessage;
+                if (error.name === 'AbortError') {
+                    errorMessage = 'Timeout: Die Verarbeitung dauert zu lange (über 5 Minuten). Bitte versuche es später erneut.';
+                } else if (error.message.includes('Failed to fetch')) {
+                    errorMessage = 'Netzwerkfehler: Keine Verbindung zum Server. Prüfe deine Internetverbindung.';
+                } else if (error.message.includes('HTTP 500')) {
+                    errorMessage = 'Serverfehler: Problem bei der Highlight-Extraktion. Prüfe die Konsole für Details.';
+                } else if (error.message.includes('HTTP 404')) {
+                    errorMessage = 'Video nicht gefunden. Möglicherweise wurde es gelöscht.';
+                } else {
+                    errorMessage = `Fehler bei der Verarbeitung: ${error.message}`;
+                }
+                
+                showNotification('error', errorMessage);
             });
         }
         
@@ -722,7 +766,13 @@
                                             `<button class="btn btn-success btn-sm" onclick="extractSingleClip('${data.summary_id}', ${index})">
                                                 <i class="fas fa-scissors"></i> Clip erstellen
                                             </button>` : 
-                                            '<span class="badge bg-success">Clip verfügbar</span>'
+                                            `<span class="badge bg-success">✓ Clip verfügbar</span>
+                                            ${clip.clip_path ? 
+                                                `<a href="/download_highlight/${clip.clip_path.split('/').pop()}" 
+                                                   class="btn btn-primary btn-sm ms-2">
+                                                    <i class="fas fa-download"></i> Download
+                                                </a>` : ''
+                                            }`
                                         }
                                     </div>
                                 </div>
@@ -789,8 +839,8 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        showNotification('success', 'Clip erfolgreich extrahiert!');
-                        setTimeout(() => location.reload(), 1500);
+                        showNotification('success', '🎬 Clip erfolgreich extrahiert und kann jetzt heruntergeladen werden!');
+                        setTimeout(() => location.reload(), 2000);
                     } else {
                         showNotification('error', `Fehler: ${data.message}`);
                     }

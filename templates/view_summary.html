@@ -311,7 +311,27 @@
                         </div>
                         <small class="text-muted">
                             <i class="fas fa-robot me-1"></i>
-                            Powered by OpenAI GPT • {{ summary.summary_type.title() }} Analysis
+                            {% if summary.ai_provider %}
+                                {% if summary.ai_provider == 'grok' %}
+                                    Powered by Grok (XAI)
+                                {% elif summary.ai_provider == 'claude' %}
+                                    Powered by Claude (Anthropic)
+                                {% elif summary.ai_provider == 'gemini' %}
+                                    Powered by Gemini (Google)
+                                {% elif summary.ai_provider == 'perplexity' %}
+                                    Powered by Perplexity
+                                {% elif summary.ai_provider == 'deepseek' %}
+                                    Powered by DeepSeek
+                                {% else %}
+                                    Powered by OpenAI GPT
+                                {% endif %}
+                                {% if summary.ai_model %}
+                                    • Model: {{ summary.ai_model }}
+                                {% endif %}
+                            {% else %}
+                                Powered by OpenAI GPT
+                            {% endif %}
+                            • {{ summary.summary_type.title() }} Analysis
                         </small>
                     </div>
                     <div class="card-body summary-body" id="summaryBody">

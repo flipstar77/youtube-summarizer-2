@@ -165,7 +165,8 @@ class SupabaseDatabase:
     def save_summary_with_vector(self, video_id: str, url: str, title: str, 
                                 summary_type: str, summary: str, transcript_length: int, 
                                 embedding: list = None, audio_file: str = None, voice_id: str = None,
-                                uploader: str = None, duration: int = None):
+                                uploader: str = None, duration: int = None,
+                                ai_provider: str = None, ai_model: str = None):
         """Save summary with vector embedding"""
         try:
             summary_data = {
@@ -179,6 +180,12 @@ class SupabaseDatabase:
                 'voice_id': voice_id,
                 'created_at': datetime.now().isoformat()
             }
+            
+            # Add AI provider and model if provided
+            if ai_provider:
+                summary_data['ai_provider'] = ai_provider
+            if ai_model:
+                summary_data['ai_model'] = ai_model
             
             # Skip new columns if they don't exist in schema (graceful handling)  
             # TODO: Add uploader and duration when database schema is updated
