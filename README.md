@@ -27,6 +27,20 @@ A comprehensive Python application that downloads YouTube video transcripts and 
 
 ## 🚀 Quick Setup
 
+### Option A: Automated Setup (Recommended)
+```bash
+# Run the setup wizard
+python setup.py
+
+# Verify your setup
+python init.py
+
+# Start the application
+python app.py
+```
+
+### Option B: Manual Setup
+
 ### 1. Install Dependencies
 ```bash
 pip install -r requirements.txt
@@ -69,6 +83,19 @@ pytest -q -k vector_rpc
 
 **Option B: SQL Health Check**
 Run `sql/health_check.sql` in Supabase SQL Editor - each section should return "ok" or meaningful data.
+
+### Living Checkpoint System
+The system includes automated health monitoring:
+```bash
+# Full system verification (run anytime)
+python init.py
+
+# Guided setup for new installations  
+python setup.py
+
+# Continuous health monitoring
+python init_system.py --monitor
+```
 
 ### 3. Environment Configuration
 
