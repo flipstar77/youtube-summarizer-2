@@ -260,8 +260,14 @@ def new_summary():
         # Generate SRT file if requested
         if generate_srt:
             try:
-                srt_content = create_srt_from_text(summary, transcript_data.get('duration', 0))
-                srt_filename = f"srt/summary_{transcript_data['video_id']}.srt"
+                # Use real transcript data instead of summary text
+                if transcript_data.get('segments'):
+                    srt_content = create_srt_from_transcript(transcript_data['segments'])
+                else:
+                    print("[WARNING] No transcript segments available, creating SRT from summary text")
+                    srt_content = create_srt_from_text(summary, transcript_data.get('duration', 0))
+                
+                srt_filename = f"srt/transcript_{transcript_data['video_id']}.srt"
                 srt_path = os.path.join('static', srt_filename)
                 
                 # Ensure srt directory exists
@@ -460,8 +466,14 @@ def generate_srt(summary_id):
         from datetime import datetime
         import tempfile
         
-        # Create SRT content from summary
-        srt_content = create_srt_from_text(summary['summary'], summary.get('transcript_length', 0))
+        # Try to get original transcript, fallback to summary-based SRT
+        transcript_text = summary.get('transcript', '')
+        if transcript_text:
+            # If we have the full transcript, try to recreate segments
+            srt_content = create_srt_from_transcript_text(transcript_text)
+        else:
+            print(f"[WARNING] No transcript available for summary {summary_id}, creating SRT from summary text")
+            srt_content = create_srt_from_text(summary['summary'], summary.get('transcript_length', 0))
         
         # Create temporary file for download
         temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.srt', delete=False, encoding='utf-8')
@@ -479,8 +491,88 @@ def generate_srt(summary_id):
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+def create_srt_from_transcript(transcript_segments):
+    """Create proper SRT from YouTube transcript segments"""
+    if not transcript_segments:
+        return ""
+    
+    srt_content = []
+    
+    for i, segment in enumerate(transcript_segments, 1):
+        start_time = segment.get('start', 0)
+        duration = segment.get('duration', 0)
+        text = segment.get('text', '').strip()
+        
+        if not text:
+            continue
+        
+        end_time = start_time + duration
+        
+        # Format timestamps for SRT (HH:MM:SS,mmm)
+        start_formatted = format_srt_timestamp(start_time)
+        end_formatted = format_srt_timestamp(end_time)
+        
+        # Add SRT entry
+        srt_content.append(f"{i}")
+        srt_content.append(f"{start_formatted} --> {end_formatted}")
+        srt_content.append(text)
+        srt_content.append("")  # Empty line between entries
+    
+    return '\n'.join(srt_content)
+
+def format_srt_timestamp(seconds):
+    """Format seconds as SRT timestamp (HH:MM:SS,mmm)"""
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+    milliseconds = int((seconds % 1) * 1000)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d},{milliseconds:03d}"
+
+def create_srt_from_transcript_text(transcript_text):
+    """Create SRT from stored transcript text (try to estimate timing)"""
+    if not transcript_text:
+        return ""
+    
+    # Split transcript into sentences/phrases
+    sentences = []
+    for line in transcript_text.split('\n'):
+        line = line.strip()
+        if line:
+            # Split long lines by sentences
+            sent_parts = [s.strip() for s in line.replace('.', '.\n').split('\n') if s.strip()]
+            sentences.extend(sent_parts)
+    
+    if not sentences:
+        return ""
+    
+    srt_content = []
+    # Estimate ~3 seconds per sentence (reading pace)
+    duration_per_sentence = 3.0
+    current_time = 0.0
+    
+    for i, sentence in enumerate(sentences, 1):
+        if not sentence:
+            continue
+        
+        # Adjust duration based on sentence length
+        words = len(sentence.split())
+        estimated_duration = max(words * 0.5, 2.0)  # ~0.5 seconds per word, minimum 2 seconds
+        
+        start_formatted = format_srt_timestamp(current_time)
+        end_formatted = format_srt_timestamp(current_time + estimated_duration)
+        
+        srt_content.append(f"{i}")
+        srt_content.append(f"{start_formatted} --> {end_formatted}")
+        srt_content.append(sentence)
+        srt_content.append("")  # Empty line
+        
+        current_time += estimated_duration + 0.5  # Small gap between subtitles
+    
+    return '\n'.join(srt_content)
+
 def create_srt_from_text(text, estimated_duration=0):
-    """Create SRT format from text content"""
+    """Legacy function - creates fake SRT from summary text (DEPRECATED)"""
+    print("[WARNING] create_srt_from_text creates fake subtitles - use create_srt_from_transcript instead")
     # Split text into sentences for subtitle segments
     sentences = [s.strip() for s in text.replace('\n', ' ').split('.') if s.strip()]
     
@@ -539,7 +631,13 @@ def download_video(summary_id):
         # Get SRT content if subtitles are requested
         srt_content = None
         if include_subtitles:
-            srt_content = create_srt_from_text(summary['summary'], summary.get('transcript_length', 0))
+            # Try to get original transcript, fallback to summary-based SRT
+            transcript_text = summary.get('transcript', '')
+            if transcript_text:
+                srt_content = create_srt_from_transcript_text(transcript_text)
+            else:
+                print(f"[WARNING] No transcript available for video download, creating SRT from summary text")
+                srt_content = create_srt_from_text(summary['summary'], summary.get('transcript_length', 0))
         
         try:
             # Download video
