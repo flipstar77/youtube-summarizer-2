@@ -53,6 +53,8 @@ pip install -r requirements.txt
 
 ### Vector Quick Check
 Once your schema is applied, verify vector search works:
+
+**Option A: Python Smoke Tests**
 ```bash
 # Set environment variables (Windows PowerShell example)
 $env:SUPABASE_URL="https://your-project.supabase.co"
@@ -64,6 +66,9 @@ python tests/test_vector_rpc.py
 # Or with pytest (if installed)
 pytest -q -k vector_rpc
 ```
+
+**Option B: SQL Health Check**
+Run `sql/health_check.sql` in Supabase SQL Editor - each section should return "ok" or meaningful data.
 
 ### 3. Environment Configuration
 
