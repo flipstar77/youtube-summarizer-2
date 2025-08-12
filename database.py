@@ -1,3 +1,17 @@
+"""
+SQLite Database Interface - DEVELOPMENT FALLBACK ONLY
+
+WARNING: This is a legacy SQLite implementation used only as a development fallback.
+PRIMARY DATABASE: Supabase (see supabase_client.py)
+
+Features NOT available in SQLite fallback:
+- Vector similarity search
+- Real-time subscriptions  
+- Advanced indexing
+- Concurrent access optimization
+
+Use this only when Supabase is unavailable during development.
+"""
 import sqlite3
 import json
 from datetime import datetime

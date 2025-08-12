@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest ruff flake8
+        
+    - name: Lint with ruff
+      run: |
+        # Stop the build if there are Python syntax errors or undefined names
+        ruff check . --select=E9,F63,F7,F82 --show-source
+        # Exit-zero treats all errors as warnings
+        ruff check . --exit-zero --statistics
+        
+    - name: Lint with flake8 (fallback)
+      run: |
+        # Stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        
+    - name: Run vector RPC smoke tests
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      run: |
+        # Only run if Supabase credentials are available
+        if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+          echo "Running vector RPC smoke tests..."
+          python tests/test_vector_rpc.py
+        else
+          echo "Skipping vector tests - Supabase credentials not available"
+        fi
+        
+    - name: Run basic import tests
+      run: |
+        # Test that main modules can be imported without errors
+        python -c "
+        try:
+            import app
+            import database
+            import supabase_client
+            import enhanced_summarizer
+            import vector_embeddings
+            print('✅ All main modules import successfully')
+        except ImportError as e:
+            print(f'❌ Import error: {e}')
+            exit(1)
+        except Exception as e:
+            print(f'⚠️  Import warning: {e}')
+            # Don't fail on missing API keys during CI
+        "
+        
+    - name: Check for common issues
+      run: |
+        # Check for TODO comments that should be addressed
+        echo "Checking for high-priority TODOs..."
+        grep -r "TODO.*URGENT\|FIXME\|XXX" --include="*.py" . || echo "No urgent TODOs found"
+        
+        # Check for potential security issues
+        echo "Checking for potential secrets in code..."
+        grep -r "api_key.*=.*['\"][a-zA-Z0-9]" --include="*.py" . && echo "⚠️  Potential hardcoded API key found" || echo "✅ No hardcoded API keys detected"
+        
+        # Check for large files that shouldn't be in repo
+        echo "Checking for large files..."
+        find . -type f -size +50M -not -path "./.git/*" -not -path "./temp/*" -not -path "./outputs/*" && echo "⚠️  Large files found" || echo "✅ No large files in repo"
+
+  security:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Run security scan
+      uses: securecodewarrior/github-action-add-sarif@v1
+      with:
+        sarif-file: 'security-scan-results.sarif'
+      continue-on-error: true
+      
+    - name: Check for secrets
+      run: |
+        # Simple regex-based secret detection
+        echo "Scanning for potential secrets..."
+        
+        # Check for common secret patterns
+        if grep -r -E "(password|passwd|pwd|secret|token|key).*[:=].*['\"][a-zA-Z0-9]{20,}" --include="*.py" --include="*.js" --include="*.yml" --include="*.yaml" .; then
+          echo "⚠️  Potential secrets detected in code"
+          exit 1
+        fi
+        
+        if grep -r -E "AKIA[0-9A-Z]{16}" --include="*.py" --include="*.js" --include="*.yml" .; then
+          echo "⚠️  AWS access key detected"
+          exit 1
+        fi
+        
+        echo "✅ No obvious secrets detected"

@@ -1,146 +1,245 @@
 # YouTube Summarizer
 
-A comprehensive Python application that downloads YouTube video transcripts and generates AI-powered summaries. Available as both a command-line tool and a web dashboard.
+A comprehensive Python application that downloads YouTube video transcripts and generates AI-powered summaries with semantic search capabilities. Features automated subscription processing, highlight extraction, and a modern web dashboard.
 
-## Features
+## ✨ Features
 
-- 📺 Extract transcripts from YouTube videos
-- 🤖 Generate different types of summaries (brief, detailed, bullet-point) 
-- 🌍 Support for multiple languages
-- 💾 Save summaries to database and text files
-- 🖥️ Beautiful web dashboard interface
-- 📱 Responsive design for mobile devices
-- 🔍 Search and manage your summaries
-- 📊 Dashboard with statistics
-- 🎯 REST API endpoints
+- 📺 **Video Processing**: Extract transcripts from YouTube videos
+- 🤖 **AI Summaries**: Generate different types of summaries (brief, detailed, bullet-point, tutorial, professional)
+- 🔍 **Semantic Search**: Vector-based similarity search using OpenAI embeddings
+- 🎬 **Highlight Extraction**: Automatic video highlight detection and compilation
+- 📡 **Subscription Automation**: Monitor RSS feeds and auto-process new videos
+- 🎵 **Text-to-Speech**: Generate audio versions with ElevenLabs
+- 🖥️ **Web Dashboard**: Beautiful, responsive interface
+- 📊 **Analytics**: Statistics and insights dashboard
+- 🔄 **Background Jobs**: Automated processing with retry logic
 
-## Components
+## 🏗️ Architecture
 
-### 1. Command Line Interface
-Use `youtube_summarizer.py` for quick command-line summaries.
+**Primary Database**: Supabase (PostgreSQL + pgvector)
+- Vector similarity search with HNSW indexing
+- Real-time capabilities
+- Hosted and scalable
 
-### 2. Web Dashboard
-Use `app.py` to run the Flask web application with a full dashboard interface.
+**Fallback Database**: SQLite (development only)
+- Local development when Supabase unavailable
+- Limited functionality (no vector search)
 
-## Setup
+## 🚀 Quick Setup
 
-1. **Install dependencies:**
+### 1. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-2. **Set up environment variables:**
+### 2. Database Setup (Supabase)
+
+1. **Create Supabase Project**: 
+   - Go to [supabase.com](https://supabase.com)
+   - Create new project
+   - Note your project URL and service role key
+
+2. **Apply Database Schema**:
+   ```sql
+   -- In Supabase SQL Editor, run:
+   \i sql/supabase_vector_search.sql
+   ```
+   This creates tables, vector indexes, and the 2 search functions.
+
+3. **Test Setup**:
+   ```bash
+   python tests/test_vector_rpc.py
+   ```
+
+### Vector Quick Check
+Once your schema is applied, verify vector search works:
 ```bash
-cp .env.example .env
+# Set environment variables (Windows PowerShell example)
+$env:SUPABASE_URL="https://your-project.supabase.co"
+$env:SUPABASE_ANON_KEY="eyJ..."
+
+# Run smoke tests
+python tests/test_vector_rpc.py
+
+# Or with pytest (if installed)
+pytest -q -k vector_rpc
 ```
-Edit `.env` and add your OpenAI API key and other settings:
-```
-OPENAI_API_KEY=your_openai_api_key_here
-SECRET_KEY=your_flask_secret_key_here
-FLASK_DEBUG=False
+
+### 3. Environment Configuration
+
+Create `.env` file:
+```env
+# Primary Database (Supabase)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+USE_SUPABASE=true
+
+# AI Services
+OPENAI_API_KEY=your_openai_api_key
+ELEVENLABS_API_KEY=your_elevenlabs_key
+
+# Optional AI Providers
+CLAUDE_API_KEY=your_claude_key
+PERPLEXITY_API_KEY=your_perplexity_key
+DEEPSEEK_API_KEY=your_deepseek_key
+GEMINI_API_KEY=your_gemini_key
+
+# Flask
+SECRET_KEY=your_secret_key
+FLASK_DEBUG=false
 PORT=5000
 ```
 
-## Usage
-
-### Web Dashboard (Recommended)
-
-1. **Start the web server:**
+### 4. Start the Application
 ```bash
 python app.py
 ```
 
-2. **Open your browser to:**
-```
-http://localhost:5000
-```
+Open: http://localhost:5000
 
-3. **Features include:**
-   - Create new summaries by pasting YouTube URLs
-   - View all your summaries in a organized dashboard
-   - Download summaries as text files
-   - Delete old summaries
-   - Real-time progress tracking
-   - Mobile-friendly interface
+## 🔧 Key Components
 
-### Command Line Interface
+### Core Modules
+- `app.py` - Flask web application with automation
+- `supabase_client.py` - Primary database interface
+- `database.py` - SQLite fallback (dev only)
+- `enhanced_summarizer.py` - Multi-provider AI summaries
+- `vector_embeddings.py` - Semantic search with OpenAI embeddings
+- `automation_scheduler.py` - Background job processing
 
-**Basic usage:**
+### Database Schema
+- **Golden File**: `sql/supabase_vector_search.sql` (single source of truth)
+- **Archived Files**: `sql/archive/` (old versions)
+- **Vector Functions**: `search_summaries_by_similarity`, `find_similar_summaries`
+
+### Testing
+- **Smoke Tests**: `tests/test_vector_rpc.py`
+- **CI Pipeline**: `.github/workflows/ci.yml`
+- **Linting**: ruff + flake8
+
+## 📋 Usage Guide
+
+### Web Dashboard
+1. **Create Summaries**: Paste YouTube URLs, select type and AI provider
+2. **Semantic Search**: Find similar content using vector embeddings  
+3. **Manage Subscriptions**: Add YouTube channels for automatic processing
+4. **Extract Highlights**: Generate video clips of key moments
+5. **Automation Control**: Monitor and control background processing
+
+### API Endpoints
+- `GET /api/summaries` - List all summaries
+- `POST /semantic_search` - Vector similarity search
+- `GET /similar/<id>` - Find similar summaries
+- `POST /extract_highlights/<id>` - Generate video highlights
+- `GET /automation/status` - Check automation status
+
+### Automation Features
+- **RSS Monitoring**: Checks subscribed channels every 30 minutes
+- **Smart Filtering**: Processing rules based on keywords, duration, etc.
+- **Job Queue**: Priority-based processing with retry logic
+- **Error Handling**: Exponential backoff and logging
+
+## 🛠️ Development
+
+### Running Tests
 ```bash
-python youtube_summarizer.py "https://www.youtube.com/watch?v=VIDEO_ID"
+# Vector RPC smoke tests
+python tests/test_vector_rpc.py
+
+# Full test suite (if available)
+pytest
+
+# Linting
+ruff check .
+flake8 .
 ```
 
-**With options:**
+### Database Management
 ```bash
-python youtube_summarizer.py "https://www.youtube.com/watch?v=VIDEO_ID" --type brief --language en
+# Apply schema updates
+psql -h your-host -U postgres -d your-db -f sql/supabase_vector_search.sql
+
+# Check vector functions
+python -c "
+from supabase_client import SupabaseDatabase
+db = SupabaseDatabase()
+result = db.client.rpc('search_summaries_by_similarity', {...})
+print(result.data)
+"
 ```
 
-#### CLI Options:
-- `--type`: Summary type (`brief`, `detailed`, `bullet`) - default: `detailed`
-- `--language`: Transcript language preference - default: `en`
-- `--api-key`: OpenAI API key (if not set in .env file)
+### Architecture Decisions
+- **Supabase Primary**: Centralized truth, vector search, real-time
+- **Pinned Dependencies**: Stable versions prevent drift
+- **Single SQL File**: Eliminates type mismatches
+- **Smoke Tests**: Catch RPC issues before production
+- **CI Pipeline**: Automated quality checks
 
-## API Endpoints
-
-The web application also provides REST API endpoints:
-
-- `GET /api/summaries` - Get all summaries
-- `GET /api/summary/<id>` - Get specific summary
-- `DELETE /delete/<id>` - Delete summary
-
-## Project Structure
+## 📁 Project Structure
 
 ```
 youtube-summarizer/
-├── app.py                 # Flask web application
-├── youtube_summarizer.py  # Command-line interface
-├── transcript_extractor.py # YouTube transcript extraction
-├── summarizer.py          # AI summarization logic
-├── database.py           # SQLite database operations
-├── requirements.txt      # Python dependencies
-├── .env.example         # Environment variables template
-├── templates/           # HTML templates
-│   ├── base.html
-│   ├── index.html
-│   ├── new_summary.html
-│   ├── view_summary.html
-│   ├── 404.html
-│   └── 500.html
-└── static/             # CSS and assets
-    └── style.css
+├── sql/
+│   ├── supabase_vector_search.sql  # Golden database schema
+│   └── archive/                    # Old SQL files
+├── app.py                         # Main Flask application  
+├── automation_scheduler.py        # Background job processing
+├── enhanced_summarizer.py         # Multi-provider AI summaries
+├── vector_embeddings.py           # Semantic search
+├── supabase_client.py             # Primary database (Supabase)
+├── database.py                    # Fallback database (SQLite dev only)
+├── requirements.txt               # Pinned dependencies
+├── tests/
+│   └── test_vector_rpc.py        # Vector function smoke tests
+├── .github/workflows/
+│   └── ci.yml                    # CI pipeline
+├── templates/                     # HTML templates
+└── static/                       # Assets
 ```
 
-## Screenshots & Features
+## ⚠️ Important Notes
 
-### Dashboard
-- View all your summaries with video thumbnails
-- Statistics showing total summaries and recent activity
-- Quick access to create new summaries
+- **Large Media Files**: Not stored in repo (temp/, outputs/ excluded)
+- **API Keys**: Never commit secrets (use .env, test with CI)
+- **Vector Search**: Requires Supabase + pgvector extension
+- **Background Jobs**: Uses APScheduler for automation
+- **Dependencies**: Pinned versions for stability
 
-### Summary Creation
-- Simple form to paste YouTube URLs
-- Choose summary type and language
-- Real-time progress tracking during processing
+## 🐛 Troubleshooting
 
-### Summary Viewing
-- Full summary display with video information
-- Copy to clipboard functionality
-- Download as text file
-- Direct links to original videos
+### Vector Search Issues
+```bash
+# Test RPC functions
+python tests/test_vector_rpc.py
 
-## Requirements
+# Check if pgvector extension enabled
+# In Supabase SQL Editor: SELECT * FROM pg_extension WHERE extname = 'vector';
+```
 
-- Python 3.7+
-- OpenAI API key
-- Internet connection for transcript extraction and API calls
-- Modern web browser (for dashboard)
+### Database Connection
+```bash
+# Test Supabase connection
+python -c "
+from supabase_client import SupabaseDatabase
+db = SupabaseDatabase()
+print('✅ Connected to Supabase')
+"
+```
 
-## Troubleshooting
+### Common Issues
+1. **"Structure mismatch"**: Run smoke tests, check function signatures
+2. **Missing embeddings**: Vectors generated on summary creation
+3. **Automation not working**: Check APScheduler logs in app output
+4. **Large files error**: Ensure temp/ and outputs/ in .gitignore
 
-1. **"No transcript found"**: Some videos don't have transcripts available
-2. **OpenAI API errors**: Check your API key and account credits
-3. **Port already in use**: Change the PORT in your .env file
+## 🤝 Contributing
 
-## Contributing
+1. **Fork & Branch**: Create feature branches from `main`
+2. **Test**: Run smoke tests and linting
+3. **CI**: All checks must pass
+4. **Schema Changes**: Update `sql/supabase_vector_search.sql` only
+5. **Dependencies**: Pin new versions in requirements.txt
 
-Feel free to submit issues and enhancement requests!
+## 📄 License
+
+MIT License - See LICENSE file for details.
