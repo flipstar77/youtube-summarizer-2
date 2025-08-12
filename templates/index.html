@@ -1,306 +1,444 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1><i class="fas fa-chart-line"></i> Dashboard</h1>
-            <a href="/new" class="btn btn-primary">
-                <i class="fas fa-plus"></i> New Summary
-            </a>
-        </div>
-
-        <!-- Semantic Search Section -->
-        <div class="card semantic-search-card mb-4 fade-in">
-            <div class="card-header">
-                <h5><i class="fas fa-search"></i> Semantic Search</h5>
-                <small class="text-muted">Search your summaries using AI-powered semantic understanding</small>
-            </div>
-            <div class="card-body">
-                <div class="search-container">
-                    <div class="input-group search-input-group">
-                        <span class="input-group-text search-icon">
-                            <i class="fas fa-brain"></i>
+<!-- Hero Section - Clean & Minimalistic -->
+<div class="hero-section">
+    <div class="hero-content">
+        <h1 class="hero-title">YouTube Summarizer</h1>
+        <p class="hero-subtitle">Transform any YouTube video into clear, actionable insights</p>
+        
+        <!-- Primary Action - Clean Input -->
+        <div class="primary-action-card">
+            <form action="/new" method="post" class="url-input-form">
+                <div class="input-group-modern">
+                    <div class="input-icon">
+                        <i class="fab fa-youtube"></i>
+                    </div>
+                    <input type="url" 
+                           name="url" 
+                           class="form-control-modern" 
+                           placeholder="Paste YouTube URL here..." 
+                           required 
+                           autocomplete="off"
+                           id="urlInput">
+                    <button type="submit" class="btn-modern-primary" id="summarizeBtn">
+                        <span class="btn-text">Summarize</span>
+                        <span class="btn-loading" style="display: none;">
+                            <i class="fas fa-spinner fa-spin"></i> Processing...
                         </span>
-                        <input type="text" class="form-control search-input" id="semanticSearchInput" 
-                               placeholder="Search for concepts, topics, or ideas... (e.g., 'machine learning algorithms', 'productivity tips')" 
-                               aria-label="Semantic search query">
-                        <button class="btn btn-primary search-btn" type="button" id="semanticSearchBtn">
-                            <i class="fas fa-search me-2"></i>Search
-                        </button>
-                    </div>
-                    <div class="search-suggestions mt-2" id="searchSuggestions" style="display: none;">
-                        <small class="text-muted">Try searching for:</small>
-                        <div class="suggestion-tags mt-1">
-                            <span class="badge bg-light text-primary suggestion-tag" data-query="programming concepts">programming concepts</span>
-                            <span class="badge bg-light text-primary suggestion-tag" data-query="business strategies">business strategies</span>
-                            <span class="badge bg-light text-primary suggestion-tag" data-query="tutorial guides">tutorial guides</span>
-                            <span class="badge bg-light text-primary suggestion-tag" data-query="technology trends">technology trends</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Search Results -->
-                <div id="searchResults" class="search-results mt-4" style="display: none;">
-                    <div class="search-results-header mb-3">
-                        <h6><i class="fas fa-list-alt"></i> Search Results</h6>
-                        <div class="search-meta">
-                            <span id="searchResultsCount" class="badge bg-info">0 results</span>
-                            <small id="searchQuery" class="text-muted ms-2"></small>
-                        </div>
-                    </div>
-                    <div id="searchResultsList" class="search-results-list"></div>
-                </div>
-
-                <!-- Loading State -->
-                <div id="searchLoading" class="text-center py-4" style="display: none;">
-                    <div class="spinner-border text-primary me-3" role="status" aria-hidden="true"></div>
-                    <span class="text-muted">Searching with AI...</span>
-                </div>
-
-                <!-- No Results State -->
-                <div id="noResults" class="text-center py-4" style="display: none;">
-                    <i class="fas fa-search-minus fa-3x text-muted mb-3"></i>
-                    <h6 class="text-muted">No semantic matches found</h6>
-                    <p class="text-muted mb-0">Try different keywords or concepts</p>
-                </div>
-            </div>
-        </div>
-
-        {% if summaries %}
-            <div class="row mb-4 fade-in">
-                <div class="col-lg-3 col-md-6 mb-3">
-                    <div class="card stats-card">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h6 class="card-title">Total Summaries</h6>
-                                    <h3>{{ summaries|length }}</h3>
-                                </div>
-                                <div class="align-self-center">
-                                    <i class="fas fa-file-alt fa-3x"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-3 col-md-6 mb-3">
-                    <div class="card stats-card">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h6 class="card-title">Recent Summaries</h6>
-                                    <h3>{{ recent_count }}</h3>
-                                </div>
-                                <div class="align-self-center">
-                                    <i class="fas fa-clock fa-3x"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-3 col-md-6 mb-3">
-                    <div class="card stats-card">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h6 class="card-title">With Audio</h6>
-                                    <h3>{{ summaries|selectattr('audio_file')|list|length }}</h3>
-                                </div>
-                                <div class="align-self-center">
-                                    <i class="fas fa-volume-up fa-3x"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-3 col-md-6 mb-3">
-                    <div class="card stats-card vector-stats-card">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h6 class="card-title">Vector Embeddings</h6>
-                                    <h3 id="vectorStatsCount">-</h3>
-                                    <small class="text-light opacity-75" id="vectorStatsMethod">Loading...</small>
-                                </div>
-                                <div class="align-self-center">
-                                    <i class="fas fa-brain fa-3x"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Vector Management Panel -->
-            <div class="card vector-management-card mb-4 slide-up">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5><i class="fas fa-cogs"></i> Vector Embeddings Management</h5>
-                        <small class="text-muted">Manage AI-powered semantic search capabilities</small>
-                    </div>
-                    <button class="btn btn-outline-secondary btn-sm" id="toggleVectorManagement">
-                        <i class="fas fa-chevron-down"></i> Show Options
                     </button>
                 </div>
-                <div class="card-body vector-management-body" id="vectorManagementBody" style="display: none;">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <div class="embedding-status mb-4">
-                                <h6><i class="fas fa-chart-pie text-info"></i> Embedding Coverage</h6>
-                                <div class="progress mb-2" style="height: 8px;">
-                                    <div class="progress-bar" role="progressbar" id="embeddingProgress" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
-                                </div>
-                                <div class="d-flex justify-content-between small text-muted">
-                                    <span id="embeddingStats">0 of {{ summaries|length }} summaries have embeddings</span>
-                                    <span id="embeddingPercentage">0%</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="vectorization-actions">
-                                <button class="btn btn-info btn-sm w-100 mb-2" id="checkEmbeddingsBtn">
-                                    <i class="fas fa-sync me-2"></i>Check Status
-                                </button>
-                                <button class="btn btn-success btn-sm w-100" id="vectorizeAllBtn">
-                                    <i class="fas fa-magic me-2"></i>Vectorize Missing
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Vectorization Progress -->
-                    <div id="vectorizationProgress" class="vectorization-progress mt-4" style="display: none;">
-                        <div class="alert alert-info mb-3">
-                            <div class="d-flex align-items-center">
-                                <div class="spinner-border spinner-border-sm text-info me-3" role="status"></div>
-                                <div class="flex-grow-1">
-                                    <h6 class="alert-heading mb-1">Vectorizing Summaries</h6>
-                                    <div class="progress" style="height: 6px;">
-                                        <div class="progress-bar bg-info" id="vectorizationProgressBar" role="progressbar" style="width: 0%"></div>
-                                    </div>
-                                    <small class="text-muted mt-1 d-block" id="vectorizationStatus">Preparing...</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="vector-info mt-3">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="info-item">
-                                    <div class="info-label">
-                                        <i class="fas fa-microchip text-muted"></i> Embedding Model
-                                    </div>
-                                    <div class="info-value" id="embeddingModel">Loading...</div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="info-item">
-                                    <div class="info-label">
-                                        <i class="fas fa-server text-muted"></i> Vector Database
-                                    </div>
-                                    <div class="info-value" id="vectorDatabase">Checking...</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                
+                <!-- Quick Options -->
+                <div class="quick-options">
+                    <label class="option-checkbox">
+                        <input type="checkbox" name="generate_audio" value="on">
+                        <span class="checkmark"></span>
+                        <span class="option-text">Generate Audio</span>
+                    </label>
+                    <label class="option-checkbox">
+                        <input type="checkbox" name="generate_srt" value="on">
+                        <span class="checkmark"></span>
+                        <span class="option-text">Create Subtitles</span>
+                    </label>
+                    <select name="summary_type" class="type-selector" id="summaryTypeSelect">
+                        <option value="detailed">📋 Detailed Summary</option>
+                        <option value="brief">⚡ Brief Summary</option>
+                        <option value="bullet">🎯 Bullet Points</option>
+                        <option value="tutorial">📖 Tutorial Guide</option>
+                        <option value="professional">🎯 Professional</option>
+                        <option value="custom">✨ Custom Prompt</option>
+                    </select>
+                    <button type="button" class="btn-advanced-options" id="showAdvancedBtn">
+                        <i class="fas fa-cog"></i> Advanced Options
+                    </button>
                 </div>
-            </div>
+                
+                <!-- Advanced Options Panel -->
+                <div class="advanced-options-panel" id="advancedOptionsPanel" style="display: none;">
+                    <div class="advanced-header">
+                        <h4><i class="fas fa-sliders-h"></i> Advanced Options</h4>
+                        <button type="button" class="btn-close-advanced" id="hideAdvancedBtn">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Custom Prompt Section -->
+                    <div class="custom-prompt-section" id="customPromptSection" style="display: none;">
+                        <label class="advanced-label">
+                            <i class="fas fa-edit"></i> Custom Prompt
+                        </label>
+                        <textarea name="custom_prompt" 
+                                  class="custom-prompt-textarea"
+                                  placeholder="Enter your custom instructions for the AI...
 
-            <div class="card slide-up">
-                <div class="card-header">
-                    <h5><i class="fas fa-list"></i> Recent Summaries</h5>
-                    <small class="text-muted">Click on any summary to view details</small>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Video</th>
-                                    <th>Type</th>
-                                    <th>Length</th>
-                                    <th>Created</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for summary in summaries %}
-                                <tr>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <img src="https://img.youtube.com/vi/{{ summary.video_id }}/mqdefault.jpg" 
-                                                 class="me-3 rounded" style="width: 60px; height: 45px;">
-                                            <div>
-                                                <div class="fw-bold">
-                                                    {{ summary.title or 'YouTube Video' }}
-                                                </div>
-                                                <small class="text-muted">{{ summary.video_id }}</small>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-info">{{ summary.summary_type.title() }}</span>
-                                        {% if summary.audio_file %}
-                                            <span class="badge bg-success ms-1">
-                                                <i class="fas fa-volume-up"></i> Audio
-                                            </span>
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ summary.transcript_length }} chars</td>
-                                    <td>{{ summary.created_at[:16] }}</td>
-                                    <td>
-                                        <a href="/summary/{{ summary.id }}" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-eye"></i> View
-                                        </a>
-                                        <a href="{{ summary.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
-                                            <i class="fab fa-youtube"></i> Watch
-                                        </a>
-                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteSummary({{ summary.id }})">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+Examples:
+• Summarize this as a technical document
+• Extract key business insights
+• Focus on actionable takeaways
+• Create a step-by-step tutorial guide"></textarea>
+                        <small class="advanced-help">
+                            <i class="fas fa-lightbulb"></i> Write detailed instructions for how you want the AI to process the transcript
+                        </small>
+                    </div>
+                    
+                    <!-- Language Selection -->
+                    <div class="option-group">
+                        <label class="advanced-label">
+                            <i class="fas fa-globe"></i> Language
+                        </label>
+                        <select name="language" class="advanced-select">
+                            <option value="en" selected>🇺🇸 English</option>
+                            <option value="es">🇪🇸 Spanish</option>
+                            <option value="fr">🇫🇷 French</option>
+                            <option value="de">🇩🇪 German</option>
+                            <option value="it">🇮🇹 Italian</option>
+                            <option value="pt">🇵🇹 Portuguese</option>
+                            <option value="ru">🇷🇺 Russian</option>
+                        </select>
+                    </div>
+                    
+                    <!-- AI Provider Selection -->
+                    <div class="option-group">
+                        <label class="advanced-label">
+                            <i class="fas fa-robot"></i> AI Provider
+                        </label>
+                        <select name="ai_provider" class="advanced-select">
+                            <option value="openai" selected>🤖 OpenAI - GPT Models</option>
+                        </select>
+                    </div>
+                    
+                    <!-- AI Model Selection -->
+                    <div class="option-group">
+                        <label class="advanced-label">
+                            <i class="fas fa-microchip"></i> AI Model
+                        </label>
+                        <select name="ai_model" class="advanced-select">
+                            <option value="">Auto-select best model</option>
+                            <option value="gpt-4o">GPT-4o (Latest)</option>
+                            <option value="gpt-4">GPT-4 (Premium)</option>
+                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Fast)</option>
+                        </select>
+                        <small class="advanced-help">Choose specific model for fine-tuned results</small>
                     </div>
                 </div>
-            </div>
-        {% else %}
-            <div class="empty-state fade-in">
-                <i class="fas fa-video fa-5x"></i>
-                <h3>No summaries yet</h3>
-                <p>Get started by creating your first YouTube summary with AI-powered insights and semantic search!</p>
-                <a href="/new" class="btn btn-primary btn-lg mb-3">
-                    <i class="fas fa-plus"></i> Create First Summary
-                </a>
-                <div class="mt-4">
-                    <small class="text-muted">
-                        <i class="fas fa-brain me-2"></i>Once you have summaries, you'll be able to search them semantically using AI-powered understanding.
-                    </small>
-                </div>
-            </div>
-        {% endif %}
+            </form>
+        </div>
     </div>
 </div>
+
+<!-- Secondary Search - Clean & Accessible -->
+<div class="secondary-section">
+    <div class="search-section">
+        <h3 class="section-title">Search Your Library</h3>
+        <div class="search-bar-clean">
+            <div class="search-input-wrapper">
+                <i class="fas fa-brain search-prefix-icon"></i>
+                <input type="text" 
+                       class="search-input-clean" 
+                       id="semanticSearchInput" 
+                       placeholder="Search concepts, topics, or ideas..."
+                       aria-label="Semantic search query">
+                <button class="search-btn-clean" type="button" id="semanticSearchBtn">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Search Results - Clean Design -->
+        <div id="searchResults" class="search-results-clean" style="display: none;">
+            <div class="results-header">
+                <span id="searchResultsCount" class="results-count">0 results</span>
+                <small id="searchQuery" class="results-query"></small>
+            </div>
+            <div id="searchResultsList" class="results-list"></div>
+        </div>
+        
+        <!-- Loading State -->
+        <div id="searchLoading" class="loading-state" style="display: none;">
+            <div class="loading-spinner"></div>
+            <span>Searching with AI...</span>
+        </div>
+    </div>
+</div>
+
+<!-- Clean Statistics Overview -->
+{% if summaries %}
+<div class="stats-overview">
+    <div class="stats-grid">
+        <div class="stat-item">
+            <div class="stat-number">{{ summaries|length }}</div>
+            <div class="stat-label">Total Summaries</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">{{ recent_count }}</div>
+            <div class="stat-label">Recent</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">{{ summaries|selectattr('audio_file')|list|length }}</div>
+            <div class="stat-label">With Audio</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number" id="vectorStatsCount">-</div>
+            <div class="stat-label">AI Indexed</div>
+        </div>
+    </div>
+</div>
+
+<!-- AI Management - Simplified -->
+<div class="ai-status-section">
+    <div class="ai-status-header">
+        <h3 class="section-title">AI Search Status</h3>
+        <button class="btn-manage-ai" id="toggleVectorManagement">
+            <i class="fas fa-cogs"></i> Manage
+        </button>
+    </div>
+    
+    <div class="ai-status-body" id="vectorManagementBody" style="display: none;">
+        <div class="status-progress">
+            <div class="progress-info">
+                <span id="embeddingStats">Checking AI indexing status...</span>
+                <span id="embeddingPercentage">0%</span>
+            </div>
+            <div class="progress-bar-clean">
+                <div class="progress-fill" id="embeddingProgress" style="width: 0%"></div>
+            </div>
+        </div>
+        
+        <div class="ai-actions">
+            <button class="btn-secondary-clean" id="checkEmbeddingsBtn">
+                <i class="fas fa-sync"></i> Check Status
+            </button>
+            <button class="btn-primary-clean" id="vectorizeAllBtn">
+                <i class="fas fa-magic"></i> Enable AI Search
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Summaries - Clean Card Layout -->
+<div class="summaries-section">
+    <h3 class="section-title">Your Recent Summaries</h3>
+    
+    <div class="summaries-grid">
+        {% for summary in summaries %}
+        <div class="summary-card">
+            <div class="summary-thumbnail">
+                <img src="https://img.youtube.com/vi/{{ summary.video_id }}/mqdefault.jpg" 
+                     alt="Video thumbnail"
+                     loading="lazy">
+                <div class="summary-type-badge">{{ summary.summary_type }}</div>
+                {% if summary.audio_file %}
+                <div class="audio-badge">
+                    <i class="fas fa-volume-up"></i>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="summary-content">
+                <h4 class="summary-title">
+                    <a href="/summary/{{ summary.id }}">{{ summary.title or 'YouTube Video Summary' }}</a>
+                </h4>
+                <div class="summary-meta">
+                    <span class="summary-date">{{ summary.created_at[:16] }}</span>
+                    <span class="summary-length">{{ (summary.transcript_length / 1000) | round(1) }}k chars</span>
+                </div>
+                <div class="summary-excerpt">
+                    {{ (summary.summary[:120] + '...') if summary.summary|length > 120 else summary.summary }}
+                </div>
+            </div>
+            
+            <div class="summary-actions">
+                <a href="/summary/{{ summary.id }}" class="btn-view">
+                    <i class="fas fa-eye"></i> View
+                </a>
+                <a href="{{ summary.url }}" target="_blank" class="btn-watch">
+                    <i class="fab fa-youtube"></i> Watch
+                </a>
+                <button class="btn-delete" onclick="deleteSummary({{ summary.id }})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<!-- Empty State - Clean & Encouraging -->
+<div class="empty-state">
+    <div class="empty-icon">
+        <i class="fab fa-youtube"></i>
+    </div>
+    <h2 class="empty-title">Ready to Get Started?</h2>
+    <p class="empty-subtitle">Transform any YouTube video into clear, actionable insights with AI</p>
+    <div class="empty-action">
+        <a href="/new" class="btn-hero-secondary">
+            <i class="fas fa-plus"></i> Create Your First Summary
+        </a>
+    </div>
+    <div class="empty-features">
+        <div class="feature-item">
+            <i class="fas fa-brain"></i>
+            <span>AI-Powered Analysis</span>
+        </div>
+        <div class="feature-item">
+            <i class="fas fa-search"></i>
+            <span>Semantic Search</span>
+        </div>
+        <div class="feature-item">
+            <i class="fas fa-volume-up"></i>
+            <span>Audio Generation</span>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
 <script>
-// Existing delete function
+// Enhanced form submission with loading states
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('.url-input-form');
+    const urlInput = document.getElementById('urlInput');
+    const submitBtn = document.getElementById('summarizeBtn');
+    const btnText = submitBtn.querySelector('.btn-text');
+    const btnLoading = submitBtn.querySelector('.btn-loading');
+    
+    // Auto-focus on input for better UX
+    urlInput.focus();
+    
+    // Check for auto-fill from localStorage (from subscriptions page)
+    const autoFillUrl = localStorage.getItem('autoFillUrl');
+    const autoFillMessage = localStorage.getItem('autoFillMessage');
+    
+    if (autoFillUrl) {
+        // Auto-fill the URL input
+        urlInput.value = autoFillUrl;
+        
+        // Show success message
+        if (autoFillMessage) {
+            showToast(autoFillMessage, 'success');
+        }
+        
+        // Clear localStorage
+        localStorage.removeItem('autoFillUrl');
+        localStorage.removeItem('autoFillMessage');
+        
+        // Scroll to the form
+        document.querySelector('.primary-action-card').scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    // Advanced Options Toggle
+    const showAdvancedBtn = document.getElementById('showAdvancedBtn');
+    const hideAdvancedBtn = document.getElementById('hideAdvancedBtn');
+    const advancedPanel = document.getElementById('advancedOptionsPanel');
+    const summaryTypeSelect = document.getElementById('summaryTypeSelect');
+    const customPromptSection = document.getElementById('customPromptSection');
+    
+    showAdvancedBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        advancedPanel.style.display = 'block';
+        advancedPanel.scrollIntoView({ behavior: 'smooth' });
+        showAdvancedBtn.style.display = 'none';
+    });
+    
+    hideAdvancedBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        advancedPanel.style.display = 'none';
+        showAdvancedBtn.style.display = 'inline-flex';
+    });
+    
+    // Custom Prompt Toggle
+    summaryTypeSelect.addEventListener('change', function() {
+        if (this.value === 'custom') {
+            customPromptSection.style.display = 'block';
+            // Auto-show advanced panel if custom is selected
+            if (advancedPanel.style.display === 'none') {
+                showAdvancedBtn.click();
+            }
+        } else {
+            customPromptSection.style.display = 'none';
+        }
+    });
+    
+    // Form submission with loading state
+    form.addEventListener('submit', function(e) {
+        if (!urlInput.value.trim()) {
+            e.preventDefault();
+            showInputError('Please enter a YouTube URL');
+            return;
+        }
+        
+        // Show loading state
+        btnText.style.display = 'none';
+        btnLoading.style.display = 'inline-block';
+        submitBtn.disabled = true;
+        urlInput.disabled = true;
+        
+        // Add loading class to form
+        form.classList.add('processing');
+    });
+    
+    // Input validation and feedback
+    urlInput.addEventListener('input', function() {
+        clearInputError();
+        const value = this.value.trim();
+        
+        if (value && !isValidYouTubeURL(value)) {
+            showInputError('Please enter a valid YouTube URL');
+        }
+    });
+    
+    // URL validation
+    function isValidYouTubeURL(url) {
+        const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)[a-zA-Z0-9_-]+/;
+        return youtubeRegex.test(url);
+    }
+    
+    // Error handling
+    function showInputError(message) {
+        clearInputError();
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'input-error';
+        errorDiv.textContent = message;
+        urlInput.parentNode.insertBefore(errorDiv, urlInput.nextSibling);
+        urlInput.classList.add('error');
+    }
+    
+    function clearInputError() {
+        const errorDiv = document.querySelector('.input-error');
+        if (errorDiv) errorDiv.remove();
+        urlInput.classList.remove('error');
+    }
+});
+
+// Enhanced delete function with better feedback
 function deleteSummary(id) {
     if (confirm('Are you sure you want to delete this summary?')) {
+        const card = event.target.closest('.summary-card');
+        card.style.opacity = '0.5';
+        card.style.pointerEvents = 'none';
+        
         fetch('/delete/' + id, {
             method: 'DELETE',
         })
         .then(response => {
             if (response.ok) {
-                location.reload();
+                // Smooth removal animation
+                card.style.transform = 'scale(0.8)';
+                card.style.opacity = '0';
+                setTimeout(() => location.reload(), 300);
             } else {
+                // Reset card state on error
+                card.style.opacity = '1';
+                card.style.pointerEvents = 'auto';
                 alert('Error deleting summary');
             }
+        })
+        .catch(error => {
+            card.style.opacity = '1';
+            card.style.pointerEvents = 'auto';
+            alert('Network error. Please try again.');
         });
     }
 }

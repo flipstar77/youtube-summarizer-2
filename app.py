@@ -455,25 +455,47 @@ def get_ai_providers():
 
 @app.route('/generate_srt/<int:summary_id>', methods=['POST'])
 def generate_srt(summary_id):
-    """Generate SRT subtitle file from summary"""
+    """Generate SRT subtitle file from real transcript using new caption pipeline"""
     try:
         # Get the summary
         summary = db.get_summary(summary_id)
         if not summary:
             return jsonify({'status': 'error', 'message': 'Summary not found'}), 404
         
-        # Use the FFmpeg SRT processor agent to create SRT file
-        from datetime import datetime
+        video_id = summary['video_id']
+        
+        # Use the new caption pipeline to fetch and format proper captions
+        from services.captions_pipeline import CaptionPipeline
         import tempfile
         
-        # Try to get original transcript, fallback to summary-based SRT
-        transcript_text = summary.get('transcript', '')
-        if transcript_text:
-            # If we have the full transcript, try to recreate segments
-            srt_content = create_srt_from_transcript_text(transcript_text)
+        print(f"[INFO] Generating SRT for {video_id} using caption pipeline")
+        
+        # Initialize pipeline with quality validation enabled
+        pipeline = CaptionPipeline(min_quality_score=0.5)  # Lower threshold for fallback
+        
+        # Process the video to get high-quality SRT
+        result = pipeline.process(video_id)
+        
+        if not result.success or not result.srt_content:
+            print(f"[WARNING] Caption pipeline failed for {video_id}: {result.error}")
+            # Fallback to old method if pipeline fails
+            transcript_text = summary.get('transcript', '')
+            if transcript_text:
+                srt_content = create_srt_from_transcript_text(transcript_text)
+            else:
+                return jsonify({
+                    'status': 'error', 
+                    'message': f'Failed to generate captions: {result.error or "No transcript available"}'
+                }), 500
         else:
-            print(f"[WARNING] No transcript available for summary {summary_id}, creating SRT from summary text")
-            srt_content = create_srt_from_text(summary['summary'], summary.get('transcript_length', 0))
+            srt_content = result.srt_content
+            print(f"[SUCCESS] Generated SRT from {result.source} with quality score {result.quality_score:.2f}")
+            
+            # Log quality information
+            if result.validation_result and result.validation_result.issues:
+                print(f"[INFO] Caption quality issues: {len(result.validation_result.issues)}")
+                for issue in result.validation_result.issues[:3]:  # First 3 issues
+                    print(f"  - {issue}")
         
         # Create temporary file for download
         temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.srt', delete=False, encoding='utf-8')
@@ -484,11 +506,12 @@ def generate_srt(summary_id):
         return send_file(
             temp_file.name,
             as_attachment=True,
-            download_name=f"summary_{summary['video_id']}.srt",
+            download_name=f"captions_{video_id}.srt",
             mimetype='application/x-subrip'
         )
         
     except Exception as e:
+        print(f"[ERROR] SRT generation failed: {str(e)}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 def create_srt_from_transcript(transcript_segments):
@@ -1674,6 +1697,38 @@ def get_processing_jobs():
         })
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)})
+
+@app.route('/api/stats', methods=['GET'])
+def api_stats():
+    """Get quick statistics for the global navigation"""
+    try:
+        summaries = db.get_summaries()
+        total_summaries = len(summaries) if summaries else 0
+        
+        # Get vector embedding count
+        vector_embeddings = 0
+        if USE_SUPABASE:
+            try:
+                # Count summaries with embeddings using DAL
+                embeddings_data = dal.get_vector_stats()
+                vector_embeddings = embeddings_data.get('total_embeddings', 0)
+            except Exception as e:
+                print(f"[WARNING] Could not get vector stats: {e}")
+                vector_embeddings = 0
+        
+        return jsonify({
+            'total_summaries': total_summaries,
+            'vector_embeddings': vector_embeddings,
+            'recent_summaries': len([s for s in summaries if s and 'created_at' in s]) if summaries else 0
+        })
+        
+    except Exception as e:
+        print(f"[ERROR] Stats API failed: {e}")
+        return jsonify({
+            'total_summaries': 0,
+            'vector_embeddings': 0,
+            'recent_summaries': 0
+        })
 
 if __name__ == '__main__':
     # Check for required environment variables

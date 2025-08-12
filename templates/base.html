@@ -15,31 +15,99 @@
                 <i class="fab fa-youtube text-danger"></i>
                 YouTube Summarizer
             </a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="/">
-                    <i class="fas fa-home"></i> Dashboard
-                </a>
-                <a class="nav-link" href="/chatbot">
-                    <i class="fas fa-robot"></i> Q&A Chat
-                </a>
-                <a class="nav-link" href="/highlights">
-                    <i class="fas fa-video"></i> Highlights
-                </a>
-                <a class="nav-link" href="/subscriptions">
-                    <i class="fas fa-rss"></i> Subscriptions
-                </a>
-                <a class="nav-link" href="/automation">
-                    <i class="fas fa-robot"></i> Automation
-                </a>
-                <a class="nav-link" href="/settings">
-                    <i class="fas fa-cog"></i> Settings
-                </a>
-                <a class="nav-link" href="/new">
-                    <i class="fas fa-plus"></i> New Summary
-                </a>
+            
+            <!-- Mobile menu button -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="navbar-nav me-auto">
+                    <a class="nav-link" href="/">
+                        <i class="fas fa-home"></i> Dashboard
+                    </a>
+                    <a class="nav-link" href="/new">
+                        <i class="fas fa-plus"></i> New Summary
+                    </a>
+                    <a class="nav-link" href="/chatbot">
+                        <i class="fas fa-robot"></i> Q&A Chat
+                    </a>
+                    <a class="nav-link" href="/highlights">
+                        <i class="fas fa-video"></i> Video Highlights
+                    </a>
+                    <a class="nav-link" href="/subscriptions">
+                        <i class="fas fa-rss"></i> Channel Subscriptions
+                    </a>
+                    <a class="nav-link" href="/automation">
+                        <i class="fas fa-cogs"></i> Automation
+                    </a>
+                    <a class="nav-link" href="/settings">
+                        <i class="fas fa-cog"></i> Settings
+                    </a>
+                </div>
+                
+                <!-- Quick Search Panel Toggle -->
+                <div class="navbar-nav">
+                    <button class="nav-link btn btn-link text-light" id="quickActionsToggle" type="button">
+                        <i class="fas fa-search"></i> Quick Search
+                    </button>
+                </div>
             </div>
         </div>
     </nav>
+
+    <!-- Quick Actions Panel (collapsible) -->
+    <div class="quick-actions-panel bg-light border-bottom" id="quickActionsPanel" style="display: none;">
+        <div class="container py-3">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <!-- Semantic Search -->
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-brain text-primary"></i>
+                        </span>
+                        <input type="text" class="form-control" id="globalSemanticSearch" 
+                               placeholder="Search your summaries semantically...">
+                        <button class="btn btn-primary" type="button" id="globalSearchBtn">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <!-- Quick Stats & Actions -->
+                    <div class="d-flex justify-content-end align-items-center gap-3">
+                        <div class="quick-stat">
+                            <small class="text-muted">Total Summaries</small>
+                            <div class="fw-bold" id="quickStatsSummaries">-</div>
+                        </div>
+                        <div class="quick-stat">
+                            <small class="text-muted">Vector Embeddings</small>
+                            <div class="fw-bold" id="quickStatsVectors">-</div>
+                        </div>
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-sm btn-outline-primary" onclick="window.location.href='/new'">
+                                <i class="fas fa-plus"></i> New
+                            </button>
+                            <button class="btn btn-sm btn-outline-info" id="quickVectorManage">
+                                <i class="fas fa-cogs"></i> Vectors
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Global Search Results -->
+            <div id="globalSearchResults" class="mt-3" style="display: none;">
+                <div class="search-results-header d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0"><i class="fas fa-list-alt"></i> Search Results</h6>
+                    <button class="btn btn-sm btn-outline-secondary" id="closeGlobalSearch">
+                        <i class="fas fa-times"></i> Close
+                    </button>
+                </div>
+                <div id="globalSearchResultsList" class="search-results-list"></div>
+            </div>
+        </div>
+    </div>
 
     <div class="container mt-4">
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -57,6 +125,149 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Global Quick Actions Script -->
+    <script>
+    // Quick Actions Panel Toggle
+    document.getElementById('quickActionsToggle').addEventListener('click', function() {
+        const panel = document.getElementById('quickActionsPanel');
+        const isVisible = panel.style.display !== 'none';
+        
+        if (isVisible) {
+            panel.style.display = 'none';
+            this.innerHTML = '<i class="fas fa-search"></i> Quick Search';
+        } else {
+            panel.style.display = 'block';
+            this.innerHTML = '<i class="fas fa-times"></i> Close';
+            // Load quick stats when panel opens
+            loadQuickStats();
+        }
+    });
+
+    // Global Semantic Search
+    document.getElementById('globalSearchBtn').addEventListener('click', function() {
+        performGlobalSearch();
+    });
+    
+    // Enter key support for search
+    document.getElementById('globalSemanticSearch').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            performGlobalSearch();
+        }
+    });
+    
+    // Close global search results
+    document.getElementById('closeGlobalSearch').addEventListener('click', function() {
+        document.getElementById('globalSearchResults').style.display = 'none';
+    });
+    
+    // Quick vector management
+    document.getElementById('quickVectorManage').addEventListener('click', function() {
+        // Redirect to dashboard with vector management open
+        window.location.href = '/#vector-management';
+    });
+
+    function performGlobalSearch() {
+        const query = document.getElementById('globalSemanticSearch').value.trim();
+        if (!query) return;
+        
+        const searchBtn = document.getElementById('globalSearchBtn');
+        const resultsList = document.getElementById('globalSearchResultsList');
+        const resultsContainer = document.getElementById('globalSearchResults');
+        
+        // Show loading state
+        searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching...';
+        searchBtn.disabled = true;
+        resultsContainer.style.display = 'block';
+        resultsList.innerHTML = '<div class="text-center py-3"><div class="spinner-border text-primary"></div><div class="mt-2">Searching with AI...</div></div>';
+        
+        fetch('/search', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                query: query,
+                count: 5
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            displayGlobalSearchResults(data.results || []);
+        })
+        .catch(error => {
+            console.error('Search error:', error);
+            resultsList.innerHTML = '<div class="alert alert-danger">Search failed. Please try again.</div>';
+        })
+        .finally(() => {
+            // Reset button
+            searchBtn.innerHTML = '<i class="fas fa-search"></i> Search';
+            searchBtn.disabled = false;
+        });
+    }
+
+    function displayGlobalSearchResults(results) {
+        const resultsList = document.getElementById('globalSearchResultsList');
+        
+        if (!results || results.length === 0) {
+            resultsList.innerHTML = '<div class="text-center py-3 text-muted"><i class="fas fa-search-minus fa-2x mb-2"></i><br>No results found</div>';
+            return;
+        }
+        
+        const resultsHtml = results.map(result => {
+            const similarity = (result.similarity * 100).toFixed(1);
+            const thumbnail = `https://img.youtube.com/vi/${result.video_id}/mqdefault.jpg`;
+            
+            return `
+                <div class="search-result-item border rounded p-3 mb-2">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <img src="${thumbnail}" class="rounded" width="80" height="60" alt="Thumbnail">
+                        </div>
+                        <div class="col">
+                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                <h6 class="mb-1">
+                                    <a href="/summary/${result.id}" class="text-decoration-none">
+                                        ${result.title || 'YouTube Video Summary'}
+                                    </a>
+                                </h6>
+                                <span class="badge bg-success">${similarity}% match</span>
+                            </div>
+                            <p class="text-muted small mb-2">${truncateText(result.summary, 120)}</p>
+                            <div class="small text-muted">
+                                <span class="badge bg-info me-2">${result.summary_type}</span>
+                                <i class="fas fa-calendar me-1"></i>${result.created_at.substring(0, 16)}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        resultsList.innerHTML = resultsHtml;
+    }
+
+    function loadQuickStats() {
+        // Load summary count
+        fetch('/api/stats')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('quickStatsSummaries').textContent = data.total_summaries || '0';
+                document.getElementById('quickStatsVectors').textContent = data.vector_embeddings || '0';
+            })
+            .catch(error => {
+                console.error('Stats loading error:', error);
+                document.getElementById('quickStatsSummaries').textContent = '-';
+                document.getElementById('quickStatsVectors').textContent = '-';
+            });
+    }
+
+    function truncateText(text, maxLength) {
+        if (text.length <= maxLength) return text;
+        return text.substring(0, maxLength) + '...';
+    }
+    </script>
+    
     {% block scripts %}{% endblock %}
 </body>
 </html>
