@@ -133,6 +133,11 @@
         background: linear-gradient(135deg, #ff8a80 0%, #ffb74d 100%);
         color: white;
     }
+    
+    .icon-vector {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
 </style>
 
 <div class="hero-section">
@@ -365,6 +370,68 @@
                     </div>
                     <div class="col-md-2">
                         <button class="btn btn-sm btn-gradient" onclick="saveSetting('{{ setting_name }}', 'subscriptions')">
+                            <i class="fas fa-save"></i> Save
+                        </button>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Vector Search Settings Section -->
+    <div class="settings-card">
+        <div class="settings-header">
+            <div class="d-flex align-items-center">
+                <div class="category-icon icon-vector">
+                    <i class="fas fa-search fa-lg"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0">Vector Search Settings</h4>
+                    <small class="opacity-75">Configure semantic search behavior and thresholds</small>
+                </div>
+            </div>
+            <div>
+                <span class="badge bg-light text-dark">{{ vector_search_settings|length }} settings</span>
+            </div>
+        </div>
+        {% for setting_name, setting_data in vector_search_settings.items() %}
+            <div class="setting-item">
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <div class="setting-label">{{ setting_name.replace('_', ' ').title() }}</div>
+                        <div class="setting-description">{{ setting_data.description }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        {% if setting_data.type == 'boolean' %}
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="{{ setting_name }}"
+                                       {% if setting_data.value %}checked{% endif %}>
+                                <label class="form-check-label" for="{{ setting_name }}">
+                                    {{ 'Enabled' if setting_data.value else 'Disabled' }}
+                                </label>
+                            </div>
+                        {% elif setting_data.type == 'number' %}
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="{{ setting_name }}" 
+                                       value="{{ setting_data.value or '' }}" placeholder="Enter value..."
+                                       {% if 'threshold' in setting_name %}step="0.01" min="0" max="1"{% endif %}
+                                       {% if 'limit' in setting_name %}min="1" max="100"{% endif %}>
+                                {% if 'threshold' in setting_name %}
+                                    <span class="input-group-text">similarity</span>
+                                {% elif 'limit' in setting_name %}
+                                    <span class="input-group-text">results</span>
+                                {% endif %}
+                            </div>
+                            {% if 'threshold' in setting_name %}
+                                <small class="text-muted">Range: 0.0 (any similarity) to 1.0 (exact match). Recommended: 0.75-0.85</small>
+                            {% endif %}
+                        {% else %}
+                            <input type="text" class="form-control" id="{{ setting_name }}" 
+                                   value="{{ setting_data.value or '' }}" placeholder="Enter value...">
+                        {% endif %}
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-sm btn-gradient" onclick="saveSetting('{{ setting_name }}', 'vector_search')">
                             <i class="fas fa-save"></i> Save
                         </button>
                     </div>

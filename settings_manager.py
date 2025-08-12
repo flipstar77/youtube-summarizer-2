@@ -409,6 +409,32 @@ class SettingsManager:
                 'category': 'subscriptions',
                 'description': 'Interval in seconds to check for new subscription videos',
                 'sensitive': False
+            },
+            
+            # Vector Search Settings
+            {
+                'key': 'vector_search_threshold',
+                'value': 0.75,
+                'type': 'number',
+                'category': 'vector_search',
+                'description': 'Similarity threshold for vector search (0.0-1.0, higher = more similar)',
+                'sensitive': False
+            },
+            {
+                'key': 'vector_search_limit',
+                'value': 10,
+                'type': 'number',
+                'category': 'vector_search',
+                'description': 'Maximum number of similar results to return',
+                'sensitive': False
+            },
+            {
+                'key': 'vector_search_enabled',
+                'value': True,
+                'type': 'boolean',
+                'category': 'vector_search',
+                'description': 'Enable semantic vector search functionality',
+                'sensitive': False
             }
         ]
         

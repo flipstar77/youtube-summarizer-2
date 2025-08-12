@@ -3,6 +3,19 @@
 {% block title %}{{ summary.title or 'Summary' }} - YouTube Summarizer{% endblock %}
 
 {% block content %}
+<style>
+.highlight-flash {
+    animation: flashHighlight 2s ease-in-out;
+}
+
+@keyframes flashHighlight {
+    0% { background-color: transparent; }
+    25% { background-color: rgba(0, 123, 255, 0.1); }
+    75% { background-color: rgba(0, 123, 255, 0.1); }
+    100% { background-color: transparent; }
+}
+</style>
+
 <div class="row">
     <div class="col-md-12">
         <!-- Header Section with Enhanced Design -->
@@ -24,6 +37,9 @@
                 <a href="{{ summary.url }}" target="_blank" class="btn btn-outline-danger btn-lg me-2">
                     <i class="fab fa-youtube"></i> Watch Video
                 </a>
+                <button class="btn btn-outline-info btn-lg me-2" onclick="showSimilarContent()">
+                    <i class="fas fa-search"></i> Similar Content
+                </button>
                 <a href="/" class="btn btn-outline-secondary btn-lg">
                     <i class="fas fa-arrow-left"></i> Back to Dashboard
                 </a>
@@ -642,24 +658,15 @@ function loadSimilarContent() {
     
     showSimilarContentLoading();
     
-    fetch(`/similar/${summaryId}`)
+    fetch(`/similar/${summaryId}?count=8`)
     .then(response => response.json())
     .then(data => {
         hideSimilarContentLoading();
         
-        if (data.status === 'success') {
-            if (data.similar_summaries && data.similar_summaries.length > 0) {
-                displaySimilarContent(data.similar_summaries);
-            } else {
-                showNoSimilarContent();
-            }
+        if (data.results && data.results.length > 0) {
+            displaySimilarContent(data.results);
         } else {
-            if (data.message.includes('not available')) {
-                showVectorSearchDisabled();
-            } else {
-                showNoSimilarContent();
-                console.error('Similar content error:', data.message);
-            }
+            showNoSimilarContent();
         }
     })
     .catch(error => {
@@ -743,6 +750,21 @@ function showVectorSearchDisabled() {
     document.getElementById('vectorSearchDisabled').style.display = 'block';
     document.getElementById('similarContentList').style.display = 'none';
     document.getElementById('noSimilarContent').style.display = 'none';
+}
+
+function showSimilarContent() {
+    // Scroll to similar content section
+    const similarSection = document.querySelector('.similar-content-card');
+    if (similarSection) {
+        similarSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Add a brief highlight effect
+        similarSection.classList.add('highlight-flash');
+        setTimeout(() => {
+            similarSection.classList.remove('highlight-flash');
+        }, 2000);
+    }
+    // Load content if not already loaded
+    loadSimilarContent();
 }
 
 function refreshSimilarContent() {

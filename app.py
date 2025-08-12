@@ -20,6 +20,35 @@ from automation_scheduler import AutomationScheduler
 
 load_dotenv()
 
+# Direct Supabase client for RPC calls
+from supabase import create_client
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+sb = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
+
+def rpc_search_by_embedding(embedding, match_threshold=0.75, match_count=10):
+    """
+    embedding: Liste mit 1536 floats
+    """
+    if not sb:
+        return []
+    payload = {
+        "query_embedding": embedding,
+        "match_threshold": float(match_threshold),
+        "match_count": int(match_count),
+    }
+    res = sb.rpc("search_summaries_by_similarity", payload).execute()
+    return res.data or []
+
+def rpc_find_similar_by_id(summary_id, match_count=5):
+    """Find similar summaries by ID using RPC"""
+    if not sb:
+        return []
+    payload = {"summary_id": int(summary_id), "match_count": int(match_count)}
+    res = sb.rpc("find_similar_summaries", payload).execute()
+    return res.data or []
+
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-change-this')
 app.config['TEMPLATES_AUTO_RELOAD'] = True
@@ -590,53 +619,75 @@ def get_video_info(summary_id):
 
 @app.route('/semantic_search', methods=['POST'])
 def semantic_search():
-    """Semantic search using vector embeddings"""
+    """Semantic search using vector embeddings with new RPC functions"""
     try:
-        if not (USE_SUPABASE and embedding_service and vectorizer):
+        if not vectorizer:
             return jsonify({'status': 'error', 'message': 'Vector search not available'}), 400
         
         data = request.get_json()
         query = data.get('query', '').strip()
         
+        # Get settings from settings manager with fallbacks
+        default_threshold = settings_manager.get_setting('vector_search_threshold', 0.75) if settings_manager else 0.75
+        default_limit = settings_manager.get_setting('vector_search_limit', 10) if settings_manager else 10
+        vector_search_enabled = settings_manager.get_setting('vector_search_enabled', True) if settings_manager else True
+        
+        threshold = data.get('threshold', default_threshold)
+        limit = data.get('limit', default_limit)
+        
         if not query:
             return jsonify({'status': 'error', 'message': 'Query cannot be empty'}), 400
         
-        # Generate embedding for search query
-        query_embedding = embedding_service.create_search_embedding(query)
+        if not vector_search_enabled:
+            return jsonify({
+                'status': 'disabled', 
+                'message': 'Vector search is disabled in settings',
+                'results': []
+            }), 200
         
-        # Search for similar summaries
-        similar_summaries = db.search_similar_summaries(
-            query_embedding=query_embedding,
-            threshold=0.5,  # Lower threshold for more results
-            limit=10
+        # Use the new vector search method
+        similar_summaries = vectorizer.search_similar_summaries(
+            query_text=query,
+            match_threshold=threshold,
+            match_count=limit
         )
         
         return jsonify({
             'status': 'success',
             'query': query,
+            'threshold': threshold,
             'results': similar_summaries,
             'count': len(similar_summaries)
         })
         
     except Exception as e:
+        print(f"[ERROR] Semantic search failed: {str(e)}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/similar/<int:summary_id>')
-def get_similar_summaries(summary_id):
-    """Get summaries similar to a specific summary"""
-    try:
-        if not (USE_SUPABASE and embedding_service):
-            return jsonify({'status': 'error', 'message': 'Vector search not available'}), 400
-        
-        similar_summaries = db.find_similar_summaries(summary_id, limit=5)
-        
-        return jsonify({
-            'status': 'success',
-            'similar_summaries': similar_summaries
-        })
-        
-    except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+def similar_api(summary_id):
+    """Simple similar summaries API - direct RPC call"""
+    count = int(request.args.get("count", 5))
+    items = rpc_find_similar_by_id(summary_id, count)
+    return jsonify({
+        "summary_id": summary_id,
+        "count": count,
+        "results": items
+    })
+
+@app.route('/semantic-search', methods=['POST'])
+def semantic_search_rpc():
+    """Semantic search using direct RPC calls"""
+    body = request.get_json(force=True) or {}
+    embedding = body.get("embedding")  # Liste[float] Länge 1536
+    threshold = float(body.get("threshold", 0.75))
+    count = int(body.get("count", 10))
+
+    if not embedding or len(embedding) != 1536:
+        return jsonify({"error": "embedding (1536 floats) required"}), 400
+
+    items = rpc_search_by_embedding(embedding, threshold, count)
+    return jsonify({"results": items})
 
 @app.route('/vectorize_existing', methods=['POST'])
 def vectorize_existing_summaries():
@@ -1352,12 +1403,14 @@ def settings_dashboard():
         database_settings = settings_manager.get_settings_by_category('database')
         app_settings = settings_manager.get_settings_by_category('application')
         subscription_settings = settings_manager.get_settings_by_category('subscriptions')
+        vector_search_settings = settings_manager.get_settings_by_category('vector_search')
         
         return render_template('settings.html',
                              api_keys=api_keys,
                              database_settings=database_settings,
                              app_settings=app_settings,
-                             subscription_settings=subscription_settings)
+                             subscription_settings=subscription_settings,
+                             vector_search_settings=vector_search_settings)
     except Exception as e:
         flash(f'Error loading settings: {str(e)}', 'error')
         return redirect('/')

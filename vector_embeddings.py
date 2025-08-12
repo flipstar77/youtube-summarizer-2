@@ -162,8 +162,15 @@ class VectorEmbeddingService:
 class SummaryVectorizer:
     """Handles vectorization of summaries specifically"""
     
-    def __init__(self, embedding_service: VectorEmbeddingService):
-        self.embedding_service = embedding_service
+    def __init__(self, embedding_service: VectorEmbeddingService = None):
+        if embedding_service is None:
+            # Default to OpenAI for 1536-dimensional embeddings (matches Supabase schema)
+            self.embedding_service = VectorEmbeddingService(embedding_method='openai')
+        else:
+            self.embedding_service = embedding_service
+        
+        # Initialize Supabase client for vector operations
+        self._init_supabase_client()
     
     def vectorize_summary(self, summary_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -219,6 +226,97 @@ class SummaryVectorizer:
             vectorized_summaries.append(vectorized_summary)
         
         return vectorized_summaries
+    
+    def _init_supabase_client(self):
+        """Initialize Supabase client for vector operations"""
+        try:
+            from supabase import create_client
+            url = os.getenv("SUPABASE_URL")
+            key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY")
+            
+            if url and key:
+                self.supabase = create_client(url, key)
+                self.use_supabase = True
+                print("[OK] Vector search using Supabase")
+            else:
+                self.supabase = None
+                self.use_supabase = False
+                print("[INFO] Supabase not configured, vector search disabled")
+        except ImportError:
+            self.supabase = None
+            self.use_supabase = False
+            print("[WARNING] Supabase client not available")
+    
+    def search_similar_summaries(self, query_text: str, match_threshold: float = 0.75, match_count: int = 10) -> List[Dict[str, Any]]:
+        """
+        Search for similar summaries using vector similarity
+        
+        Args:
+            query_text: Text to search for
+            match_threshold: Similarity threshold (0.0-1.0, higher = more similar)
+            match_count: Maximum number of results to return
+            
+        Returns:
+            List of similar summaries with similarity scores
+        """
+        if not self.use_supabase or not self.supabase:
+            print("[WARNING] Vector search not available - Supabase not configured")
+            return []
+        
+        try:
+            # Generate embedding for query
+            query_embedding = self.embedding_service.generate_embedding(query_text)
+            
+            # Use the new RPC function
+            result = self.supabase.rpc("search_summaries_by_similarity", {
+                "query_embedding": query_embedding,
+                "match_threshold": match_threshold,
+                "match_count": match_count
+            }).execute()
+            
+            if result.data:
+                print(f"[INFO] Found {len(result.data)} similar summaries")
+                return result.data
+            else:
+                print("[INFO] No similar summaries found")
+                return []
+                
+        except Exception as e:
+            print(f"[ERROR] Vector search failed: {str(e)}")
+            return []
+    
+    def find_similar_to_summary(self, summary_id: int, match_count: int = 5) -> List[Dict[str, Any]]:
+        """
+        Find summaries similar to a specific summary
+        
+        Args:
+            summary_id: ID of the reference summary
+            match_count: Maximum number of results to return
+            
+        Returns:
+            List of similar summaries with similarity scores
+        """
+        if not self.use_supabase or not self.supabase:
+            print("[WARNING] Vector search not available - Supabase not configured")
+            return []
+        
+        try:
+            # Use the new RPC function
+            result = self.supabase.rpc("find_similar_summaries", {
+                "summary_id": summary_id,
+                "match_count": match_count
+            }).execute()
+            
+            if result.data:
+                print(f"[INFO] Found {len(result.data)} similar summaries to ID {summary_id}")
+                return result.data
+            else:
+                print(f"[INFO] No similar summaries found for ID {summary_id}")
+                return []
+                
+        except Exception as e:
+            print(f"[ERROR] Similar summaries search failed: {str(e)}")
+            return []
 
 # Factory function for easy initialization
 def create_embedding_service(use_openai: bool = False) -> VectorEmbeddingService:
