@@ -1,0 +1,548 @@
+{% extends "base.html" %}
+
+{% block title %}Tree-of-Thought AI Council - YouTube Summarizer{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header Card -->
+            <div class="card mb-4">
+                <div class="card-header bg-gradient-success text-white">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h3 class="mb-0"><i class="fas fa-brain"></i> Tree-of-Thought AI Council</h3>
+                            <small>Advanced Multi-Model Debate with Evidence Grounding & Scoring</small>
+                        </div>
+                        <div class="col-auto">
+                            <span class="badge bg-light text-dark">
+                                <i class="fas fa-robot"></i> {{ personas|length }} AI Experts
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">
+                        <strong>🧠 Advanced AI Debate:</strong> Experience the next generation of AI Council with 
+                        Tree-of-Thought methodology, structured debate phases, evidence-based grounding, 
+                        and real-time quality scoring across multiple AI models.
+                    </p>
+                </div>
+            </div>
+
+            <!-- System Features -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card border-success h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-sitemap fa-2x text-success mb-2"></i>
+                            <h6>Tree-of-Thought</h6>
+                            <small class="text-muted">Branching & pruning for optimal responses</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-info h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-balance-scale fa-2x text-info mb-2"></i>
+                            <h6>Evidence Scoring</h6>
+                            <small class="text-muted">Groundedness, coherence & novelty metrics</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-warning h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-route fa-2x text-warning mb-2"></i>
+                            <h6>Smart Routing</h6>
+                            <small class="text-muted">Task-optimized provider selection</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-primary h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-stream fa-2x text-primary mb-2"></i>
+                            <h6>Live Streaming</h6>
+                            <small class="text-muted">Real-time debate progression</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Council Experts Overview -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h5><i class="fas fa-users-cog"></i> AI Expert Panel</h5>
+                    <div class="row">
+                        {% for persona in personas %}
+                        <div class="col-lg-4 col-md-6 mb-3">
+                            <div class="card border-success h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="fas fa-robot text-success"></i> {{ persona.name }}
+                                    </h6>
+                                    <p class="card-text">
+                                        <strong>Role:</strong> {{ persona.role }}<br>
+                                        <strong>Expertise:</strong> {{ persona.expertise }}<br>
+                                        <small class="text-muted">{{ persona.personality }}</small>
+                                    </p>
+                                    <div class="d-flex justify-content-between">
+                                        <span class="badge bg-info">{{ persona.preferred_provider }}</span>
+                                        <small class="text-muted">{{ persona.task_types|length }} tasks</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Question Submission -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-question-circle"></i> Submit Complex Question</h5>
+                </div>
+                <div class="card-body">
+                    <form id="totCouncilForm">
+                        <div class="mb-3">
+                            <label for="totQuestion" class="form-label">Your Question</label>
+                            <textarea class="form-control" id="totQuestion" rows="3" 
+                                    placeholder="Ask a complex question that would benefit from multiple AI perspectives and evidence-based analysis..."
+                                    maxlength="1000" required></textarea>
+                            <div class="form-text">
+                                <span id="totCharCount">0</span>/1000 characters. 
+                                Best for: strategic decisions, complex analysis, research questions.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="totContext" class="form-label">Additional Context (Optional)</label>
+                            <textarea class="form-control" id="totContext" rows="2" 
+                                    placeholder="Provide background, constraints, or specific requirements..."
+                                    maxlength="500"></textarea>
+                            <div class="form-text">
+                                <span id="totContextCharCount">0</span>/500 characters
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="totRounds" class="form-label">Debate Rounds</label>
+                                <select class="form-select" id="totRounds">
+                                    <option value="2" selected>2 Rounds (Balanced)</option>
+                                    <option value="1">1 Round (Quick)</option>
+                                    <option value="3">3 Rounds (Deep Analysis)</option>
+                                </select>
+                                <div class="form-text">More rounds = deeper analysis</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="totBranching" class="form-label">Response Variants</label>
+                                <select class="form-select" id="totBranching">
+                                    <option value="1" selected>1 per Agent (Fast)</option>
+                                    <option value="2">2 per Agent (ToT)</option>
+                                    <option value="3">3 per Agent (Deep ToT)</option>
+                                </select>
+                                <div class="form-text">Tree-of-Thought branching factor</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="totMode" class="form-label">Execution Mode</label>
+                                <select class="form-select" id="totMode">
+                                    <option value="streaming" selected>Live Streaming</option>
+                                    <option value="quick">Quick Results</option>
+                                </select>
+                                <div class="form-text">Streaming vs batch processing</div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="totParallel" checked>
+                                    <label class="form-check-label" for="totParallel">
+                                        <i class="fas fa-bolt"></i> Parallel Agent Execution
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="totSaveSession" checked>
+                                    <label class="form-check-label" for="totSaveSession">
+                                        <i class="fas fa-save"></i> Save Session to History
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-success btn-lg" id="startTotCouncil">
+                            <i class="fas fa-brain"></i> Start Tree-of-Thought Council
+                        </button>
+                        
+                        <button type="button" class="btn btn-outline-secondary btn-lg ms-2" id="validateSystem">
+                            <i class="fas fa-check-circle"></i> Validate System
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Live Session Display -->
+            <div id="totSessionArea" class="card" style="display: none;">
+                <div class="card-header bg-gradient-primary text-white">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h5 class="mb-0"><i class="fas fa-broadcast-tower"></i> Live Tree-of-Thought Session</h5>
+                            <small id="totSessionStatus">Initializing...</small>
+                        </div>
+                        <div class="col-auto">
+                            <div class="progress" style="width: 200px;">
+                                <div id="totSessionProgress" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="totSessionContent">
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Setting up Tree-of-Thought debate...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Results Display -->
+            <div id="totResultsArea" class="card" style="display: none;">
+                <div class="card-header bg-gradient-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-poll"></i> Council Results</h5>
+                </div>
+                <div class="card-body">
+                    <div id="totResults">
+                        <!-- Results will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Statistics -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-bar"></i> System Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="stat-item">
+                                <h4 id="statTotalSessions">-</h4>
+                                <small class="text-muted">Total Sessions</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-item">
+                                <h4 id="statSuccessRate">-</h4>
+                                <small class="text-muted">Success Rate</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-item">
+                                <h4 id="statAvgDuration">-</h4>
+                                <small class="text-muted">Avg Duration (s)</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-item">
+                                <h4 id="statSystemHealth">-</h4>
+                                <small class="text-muted">System Health</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.stat-item {
+    padding: 1rem;
+}
+
+.progress-bar-animated {
+    animation: progress-bar-stripes 1s linear infinite;
+}
+
+.card.border-success {
+    border-color: #198754 !important;
+}
+
+.card.border-info {
+    border-color: #0dcaf0 !important;
+}
+
+.card.border-warning {
+    border-color: #ffc107 !important;
+}
+
+.card.border-primary {
+    border-color: #0d6efd !important;
+}
+
+#totSessionArea .card-header {
+    background: linear-gradient(45deg, #0d6efd, #6610f2);
+}
+
+#totResultsArea .card-header {
+    background: linear-gradient(45deg, #0dcaf0, #20c997);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Character counters
+    document.getElementById('totQuestion').addEventListener('input', function() {
+        const count = this.value.length;
+        document.getElementById('totCharCount').textContent = count;
+        if (count > 900) {
+            document.getElementById('totCharCount').style.color = 'red';
+        } else {
+            document.getElementById('totCharCount').style.color = '';
+        }
+    });
+
+    document.getElementById('totContext').addEventListener('input', function() {
+        const count = this.value.length;
+        document.getElementById('totContextCharCount').textContent = count;
+        if (count > 450) {
+            document.getElementById('totContextCharCount').style.color = 'red';
+        } else {
+            document.getElementById('totContextCharCount').style.color = '';
+        }
+    });
+
+    // Form submission
+    document.getElementById('totCouncilForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        startTotCouncil();
+    });
+
+    // System validation
+    document.getElementById('validateSystem').addEventListener('click', function() {
+        validateTotSystem();
+    });
+
+    // Load initial statistics
+    loadSystemStats();
+});
+
+function startTotCouncil() {
+    const question = document.getElementById('totQuestion').value.trim();
+    const context = document.getElementById('totContext').value.trim();
+    const mode = document.getElementById('totMode').value;
+    
+    if (!question) {
+        alert('Please enter a question for the Tree-of-Thought Council.');
+        return;
+    }
+
+    const config = {
+        max_rounds: parseInt(document.getElementById('totRounds').value),
+        branching_factor: parseInt(document.getElementById('totBranching').value),
+        parallel_agents: document.getElementById('totParallel').checked,
+        save_session: document.getElementById('totSaveSession').checked
+    };
+
+    if (mode === 'streaming') {
+        startStreamingSession(question, context, config);
+    } else {
+        startQuickSession(question, context, config);
+    }
+}
+
+function startStreamingSession(question, context, config) {
+    const sessionArea = document.getElementById('totSessionArea');
+    const resultsArea = document.getElementById('totResultsArea');
+    
+    sessionArea.style.display = 'block';
+    resultsArea.style.display = 'none';
+    
+    const eventSource = new EventSource('/api/tot_council/start');
+    
+    eventSource.onmessage = function(event) {
+        try {
+            const data = JSON.parse(event.data);
+            handleSessionUpdate(data);
+        } catch (e) {
+            console.error('Error parsing streaming data:', e);
+        }
+    };
+
+    eventSource.onerror = function() {
+        updateSessionStatus('Connection error occurred', 0, 'error');
+        eventSource.close();
+    };
+}
+
+function startQuickSession(question, context, config) {
+    const sessionArea = document.getElementById('totSessionArea');
+    const resultsArea = document.getElementById('totResultsArea');
+    
+    sessionArea.style.display = 'block';
+    resultsArea.style.display = 'none';
+    
+    updateSessionStatus('Processing quick council session...', 50);
+    
+    fetch('/api/tot_council/quick', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            question: question,
+            context: context,
+            max_rounds: config.max_rounds
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        sessionArea.style.display = 'none';
+        showQuickResults(data);
+    })
+    .catch(error => {
+        updateSessionStatus('Error: ' + error.message, 0, 'error');
+    });
+}
+
+function handleSessionUpdate(data) {
+    const { type, message, progress } = data;
+    
+    switch (type) {
+        case 'status':
+            updateSessionStatus(message, progress);
+            break;
+        case 'session_started':
+            updateSessionStatus('Session started with ' + data.participants.length + ' participants', 10);
+            break;
+        case 'round_complete':
+            const round = data.round;
+            updateSessionStatus(`Round ${round.round_number} completed (${round.phase})`, progress);
+            break;
+        case 'session_complete':
+            updateSessionStatus('Session completed successfully!', 100, 'success');
+            showSessionResults(data.session);
+            break;
+        case 'error':
+            updateSessionStatus('Error: ' + message, 0, 'error');
+            break;
+    }
+}
+
+function updateSessionStatus(message, progress, type = 'info') {
+    document.getElementById('totSessionStatus').textContent = message;
+    document.getElementById('totSessionProgress').style.width = progress + '%';
+    
+    const statusElement = document.getElementById('totSessionStatus');
+    statusElement.className = '';
+    
+    if (type === 'error') {
+        statusElement.className = 'text-danger';
+    } else if (type === 'success') {
+        statusElement.className = 'text-success';
+    }
+}
+
+function showQuickResults(data) {
+    const resultsArea = document.getElementById('totResultsArea');
+    const resultsDiv = document.getElementById('totResults');
+    
+    if (data.status === 'success') {
+        const result = data.data;
+        let html = `<h6>Question: ${result.question}</h6>`;
+        
+        if (result.responses && result.responses.length > 0) {
+            html += '<div class="mt-3"><h6>AI Responses:</h6>';
+            result.responses.forEach(response => {
+                html += `
+                    <div class="card mb-2">
+                        <div class="card-body">
+                            <h6 class="card-title">${response.agent} (${response.role})</h6>
+                            <p class="card-text">${response.answer}</p>
+                            <small class="text-muted">
+                                Uncertainty: ${(response.uncertainty * 100).toFixed(0)}% | 
+                                Claims: ${response.claims}
+                            </small>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+        
+        if (result.consensus) {
+            html += '<div class="mt-3"><h6>Consensus:</h6>';
+            html += '<div class="alert alert-info">' + JSON.stringify(result.consensus) + '</div>';
+            html += '</div>';
+        }
+        
+        resultsDiv.innerHTML = html;
+    } else {
+        resultsDiv.innerHTML = `<div class="alert alert-danger">Error: ${result.error || 'Unknown error'}</div>`;
+    }
+    
+    resultsArea.style.display = 'block';
+}
+
+function showSessionResults(session) {
+    // Implementation for full session results display
+    console.log('Full session results:', session);
+}
+
+function validateTotSystem() {
+    const button = document.getElementById('validateSystem');
+    const originalText = button.innerHTML;
+    
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Validating...';
+    button.disabled = true;
+    
+    fetch('/api/tot_council/validate')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const validation = data.data;
+                alert(`System Status: ${validation.overall_status}\n\nComponents:\n${JSON.stringify(validation.component_status, null, 2)}`);
+            } else {
+                alert('Validation failed: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Validation error: ' + error.message);
+        })
+        .finally(() => {
+            button.innerHTML = originalText;
+            button.disabled = false;
+        });
+}
+
+function loadSystemStats() {
+    fetch('/api/tot_council/stats')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const stats = data.data;
+                document.getElementById('statTotalSessions').textContent = stats.orchestrator_metrics.total_sessions || 0;
+                document.getElementById('statSuccessRate').textContent = (stats.orchestrator_metrics.successful_sessions || 0) + '%';
+                document.getElementById('statAvgDuration').textContent = (stats.orchestrator_metrics.average_duration || 0).toFixed(1);
+                
+                const health = stats.orchestrator_metrics.success_rate >= 90 ? 'Excellent' :
+                              stats.orchestrator_metrics.success_rate >= 70 ? 'Good' : 'Poor';
+                document.getElementById('statSystemHealth').textContent = health;
+            }
+        })
+        .catch(error => {
+            console.error('Failed to load stats:', error);
+        });
+}
+
+// Auto-refresh stats every 30 seconds
+setInterval(loadSystemStats, 30000);
+</script>
+{% endblock %}

@@ -19,7 +19,8 @@ from settings_manager import SettingsManager
 from automation_scheduler import AutomationScheduler
 from srt_chaptering import SRTChapteringSystem
 from pdf_processor import PDFProcessor
-from ai_council import AICouncil
+from ai_council import AICouncil  # Legacy AI Council
+from services.council import get_orchestrator, CouncilConfig  # New Tree-of-Thought Council
 
 load_dotenv()
 
@@ -939,13 +940,21 @@ try:
 except Exception as e:
     print(f"[WARNING] PDF Processor disabled: {str(e)}")
 
-# Initialize AI Council
+# Initialize AI Council (Legacy)
 ai_council = None
 try:
     ai_council = AICouncil()
     print("[OK] AI Council initialized")
 except Exception as e:
     print(f"[WARNING] AI Council disabled: {str(e)}")
+
+# Initialize Tree-of-Thought AI Council (New)
+tot_council = None
+try:
+    tot_council = get_orchestrator(enhanced_summarizer, vector_search_service)
+    print("[OK] Tree-of-Thought AI Council initialized")
+except Exception as e:
+    print(f"[WARNING] Tree-of-Thought AI Council disabled: {str(e)}")
 
 # Initialize SRT Chaptering System
 srt_chaptering = None
@@ -2371,6 +2380,150 @@ def api_ai_council_history():
             'status': 'error',
             'message': f'Error loading history: {str(e)}'
         }), 500
+
+# Tree-of-Thought AI Council Routes (New Advanced System)
+@app.route('/tot_council')
+def tot_council_interface():
+    """Tree-of-Thought AI Council interface"""
+    try:
+        if not tot_council:
+            flash('Tree-of-Thought AI Council nicht verfügbar. Bitte prüfe die Konfiguration.', 'error')
+            return redirect(url_for('index'))
+        
+        personas = tot_council.get_available_personas()
+        return render_template('tot_council.html', personas=personas)
+    except Exception as e:
+        flash(f'Fehler beim Laden der ToT AI Council Seite: {str(e)}', 'error')
+        return redirect(url_for('index'))
+
+@app.route('/api/tot_council/start', methods=['POST'])
+async def api_tot_council_start():
+    """Start Tree-of-Thought AI Council session with streaming"""
+    if not tot_council:
+        return jsonify({'status': 'error', 'message': 'ToT Council nicht verfügbar'}), 400
+    
+    data = request.get_json()
+    question = data.get('question', '').strip()
+    context = data.get('context', '').strip()
+    config_dict = data.get('config', {})
+    
+    if not question:
+        return jsonify({'status': 'error', 'message': 'Frage darf nicht leer sein'}), 400
+    
+    try:
+        # Start streaming session
+        from flask import Response
+        import asyncio
+        
+        async def generate_stream():
+            async for update in tot_council.start_council_session(question, context, config_dict):
+                yield f"data: {json.dumps(update)}\n\n"
+                
+        def stream_wrapper():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                async_gen = generate_stream()
+                while True:
+                    try:
+                        update = loop.run_until_complete(async_gen.__anext__())
+                        yield update
+                    except StopAsyncIteration:
+                        break
+            finally:
+                loop.close()
+        
+        return Response(stream_wrapper(), mimetype='text/event-stream')
+        
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/tot_council/quick', methods=['POST'])
+async def api_tot_council_quick():
+    """Quick ToT Council query without streaming"""
+    if not tot_council:
+        return jsonify({'status': 'error', 'message': 'ToT Council nicht verfügbar'}), 400
+    
+    data = request.get_json()
+    question = data.get('question', '').strip()
+    context = data.get('context', '').strip()
+    max_rounds = data.get('max_rounds', 2)
+    
+    if not question:
+        return jsonify({'status': 'error', 'message': 'Frage darf nicht leer sein'}), 400
+    
+    try:
+        result = await tot_council.quick_council_query(question, context, max_rounds)
+        return jsonify({
+            'status': 'success' if not result.get('error') else 'error',
+            'data': result
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/tot_council/status/<session_id>')
+def api_tot_council_status(session_id):
+    """Get ToT Council session status"""
+    if not tot_council:
+        return jsonify({'status': 'error', 'message': 'ToT Council nicht verfügbar'}), 400
+    
+    try:
+        status = tot_council.get_session_status(session_id)
+        if status:
+            return jsonify({'status': 'success', 'data': status})
+        else:
+            return jsonify({'status': 'error', 'message': 'Session not found'}), 404
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/tot_council/history')
+def api_tot_council_history():
+    """Get ToT Council session history"""
+    if not tot_council:
+        return jsonify({'status': 'error', 'message': 'ToT Council nicht verfügbar'}), 400
+    
+    try:
+        limit = request.args.get('limit', 10, type=int)
+        history = tot_council.get_session_history(limit)
+        return jsonify({'status': 'success', 'data': history})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/tot_council/personas')
+def api_tot_council_personas():
+    """Get available ToT Council personas"""
+    if not tot_council:
+        return jsonify({'status': 'error', 'message': 'ToT Council nicht verfügbar'}), 400
+    
+    try:
+        personas = tot_council.get_available_personas()
+        return jsonify({'status': 'success', 'data': personas})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/tot_council/stats')
+def api_tot_council_stats():
+    """Get ToT Council system statistics"""
+    if not tot_council:
+        return jsonify({'status': 'error', 'message': 'ToT Council nicht verfügbar'}), 400
+    
+    try:
+        stats = tot_council.get_system_stats()
+        return jsonify({'status': 'success', 'data': stats})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/tot_council/validate')
+async def api_tot_council_validate():
+    """Validate ToT Council system health"""
+    if not tot_council:
+        return jsonify({'status': 'error', 'message': 'ToT Council nicht verfügbar'}), 400
+    
+    try:
+        validation = await tot_council.validate_system()
+        return jsonify({'status': 'success', 'data': validation})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 if __name__ == '__main__':
     # Check for required environment variables
