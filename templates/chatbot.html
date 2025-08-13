@@ -76,6 +76,31 @@
             background: #007bff;
             color: white;
         }
+        .drop-zone {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 123, 255, 0.1);
+            border: 3px dashed #007bff;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            border-radius: 8px;
+        }
+        .drop-zone.active {
+            display: flex;
+        }
+        .drop-zone-content {
+            text-align: center;
+            color: #007bff;
+            font-size: 1.2em;
+        }
+        .chat-container {
+            position: relative;
+        }
     </style>
 </head>
 <body>
@@ -122,10 +147,13 @@
                         <!-- Mode Switch -->
                         <div class="mode-switch">
                             <button class="btn active" id="collectionMode">
-                                <i class="fas fa-database"></i> Alle Videos
+                                <i class="fas fa-database"></i> Alle Inhalte
                             </button>
-                            <button class="btn" id="transcriptMode">
-                                <i class="fas fa-file-text"></i> Einzelnes Video
+                            <button class="btn" id="videoMode">
+                                <i class="fas fa-video"></i> Video Chat
+                            </button>
+                            <button class="btn" id="pdfMode">
+                                <i class="fas fa-file-pdf"></i> PDF Chat
                             </button>
                         </div>
                     </div>
@@ -133,27 +161,58 @@
                     <div class="card-body">
                         <!-- Video Selection (hidden by default) -->
                         <div id="videoSelection" class="mb-3" style="display: none;">
-                            <label class="form-label">Video für Transcript-Chat auswählen:</label>
+                            <label class="form-label" for="videoSelect">Video für Chat auswählen:</label>
                             <select class="form-select" id="videoSelect">
                                 <option value="">Video auswählen...</option>
                                 {% for summary in summaries %}
-                                    <option value="{{ summary.video_id }}">{{ summary.title }}</option>
+                                    {% if not (summary.url and 'PDF_' in summary.url) %}
+                                    <option value="{{ summary.video_id }}">📹 {{ summary.title }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- PDF Selection (hidden by default) -->
+                        <div id="pdfSelection" class="mb-3" style="display: none;">
+                            <label class="form-label" for="pdfSelect">PDF für Chat auswählen:</label>
+                            <select class="form-select" id="pdfSelect">
+                                <option value="">PDF auswählen...</option>
+                                {% for summary in summaries %}
+                                    {% if summary.url and 'PDF_' in summary.url %}
+                                    <option value="{{ summary.video_id }}" data-type="pdf">📄 {{ summary.title }}</option>
+                                    {% endif %}
                                 {% endfor %}
                             </select>
                         </div>
                         
                         <!-- Chat Interface -->
                         <div class="chat-container" id="chatContainer">
+                            <!-- Drop Zone Overlay -->
+                            <div class="drop-zone" id="dropZone">
+                                <div class="drop-zone-content">
+                                    <i class="fas fa-cloud-upload-alt fa-3x mb-3"></i><br>
+                                    <strong>PDF hierhin ziehen</strong><br>
+                                    <small>Lasse die PDF-Datei los, um sie hochzuladen und zu chatten</small>
+                                </div>
+                            </div>
+                            
                             <div class="message bot-message">
-                                <strong>🤖 Video Assistant:</strong><br>
-                                Hallo! Ich kann dir Fragen zu deiner Video-Sammlung beantworten. 
+                                <strong>🤖 Knowledge Assistant:</strong><br>
+                                Hallo! Ich kann dir Fragen zu deinen Videos und PDFs beantworten. 
                                 Du kannst entweder alle Videos durchsuchen oder mit einem spezifischen Video chatten.
                                 <br><br>
                                 <em>Beispiele:</em><br>
                                 • "Wie funktioniert Machine Learning?"<br>
                                 • "Was wurde über Künstliche Intelligenz gesagt?"<br>
-                                • "Erkläre mir das Konzept von Deep Learning"
+                                • "Erkläre mir das Konzept von Deep Learning"<br><br>
+                                <small class="text-muted">💡 Tipp: Du kannst auch PDF-Dateien direkt in dieses Fenster ziehen!</small>
                             </div>
+                        </div>
+                        
+                        <!-- Follow-up Questions Box -->
+                        <div id="followUpQuestions" class="alert alert-info mt-3" style="display: none;">
+                            <h6><i class="fas fa-lightbulb"></i> Suggested Follow-up Questions:</h6>
+                            <div id="followUpList"></div>
                         </div>
                         
                         <!-- Input Area -->
@@ -166,8 +225,14 @@
                                         <i class="fas fa-paper-plane"></i> Senden
                                     </button>
                                 </div>
-                                <div class="form-text">
+                                <div class="form-text d-flex justify-content-between align-items-center">
                                     <span id="modeStatus">Modus: Durchsuche alle {{ summaries|length }} Videos</span>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="usePerplexity">
+                                        <label class="form-check-label" for="usePerplexity">
+                                            <i class="fas fa-search-plus"></i> Deep Research (Perplexity)
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -180,7 +245,7 @@
                         <div class="card">
                             <div class="card-body text-center">
                                 <h5>{{ summaries|length }}</h5>
-                                <p class="text-muted mb-0">Videos verfügbar</p>
+                                <p class="text-muted mb-0">Dokumente verfügbar</p>
                             </div>
                         </div>
                     </div>
@@ -261,8 +326,12 @@
             switchMode('collection');
         });
         
-        document.getElementById('transcriptMode').addEventListener('click', function() {
-            switchMode('transcript');
+        document.getElementById('videoMode').addEventListener('click', function() {
+            switchMode('video');
+        });
+        
+        document.getElementById('pdfMode').addEventListener('click', function() {
+            switchMode('pdf');
         });
         
         function switchMode(mode) {
@@ -270,18 +339,21 @@
             
             // Update button states
             document.getElementById('collectionMode').classList.toggle('active', mode === 'collection');
-            document.getElementById('transcriptMode').classList.toggle('active', mode === 'transcript');
+            document.getElementById('videoMode').classList.toggle('active', mode === 'video');
+            document.getElementById('pdfMode').classList.toggle('active', mode === 'pdf');
             
-            // Show/hide video selection
-            document.getElementById('videoSelection').style.display = 
-                mode === 'transcript' ? 'block' : 'none';
+            // Show/hide selections
+            document.getElementById('videoSelection').style.display = mode === 'video' ? 'block' : 'none';
+            document.getElementById('pdfSelection').style.display = mode === 'pdf' ? 'block' : 'none';
             
             // Update status
             const statusElement = document.getElementById('modeStatus');
             if (mode === 'collection') {
-                statusElement.textContent = 'Modus: Durchsuche alle {{ summaries|length }} Videos';
-            } else {
+                statusElement.textContent = 'Modus: Durchsuche alle Inhalte (Videos + PDFs)';
+            } else if (mode === 'video') {
                 statusElement.textContent = 'Modus: Chat mit ausgewähltem Video';
+            } else if (mode === 'pdf') {
+                statusElement.textContent = 'Modus: Chat mit ausgewählter PDF';
             }
             
             // Clear chat
@@ -305,10 +377,16 @@
             
             if (!question) return;
             
-            if (currentMode === 'transcript') {
+            if (currentMode === 'video') {
                 const videoSelect = document.getElementById('videoSelect');
                 if (!videoSelect.value) {
                     alert('Bitte wähle zuerst ein Video aus!');
+                    return;
+                }
+            } else if (currentMode === 'pdf') {
+                const pdfSelect = document.getElementById('pdfSelect');
+                if (!pdfSelect.value) {
+                    alert('Bitte wähle zuerst eine PDF aus!');
                     return;
                 }
             }
@@ -321,13 +399,16 @@
             const loadingId = addMessage('bot', '<i class="fas fa-spinner fa-spin"></i> Suche nach Antworten<span class="loading-dots"></span>');
             
             // Send request
-            const endpoint = currentMode === 'collection' ? '/api/ask_question' : '/api/chat_transcript';
+            const endpoint = '/api/ask_question';  // Always use the collection endpoint
             const payload = {
-                question: question
+                question: question,
+                use_perplexity: document.getElementById('usePerplexity').checked
             };
             
-            if (currentMode === 'transcript') {
+            if (currentMode === 'video') {
                 payload.video_id = document.getElementById('videoSelect').value;
+            } else if (currentMode === 'pdf') {
+                payload.video_id = document.getElementById('pdfSelect').value;
             }
             
             fetch(endpoint, {
@@ -372,12 +453,28 @@
                         });
                     }
                     
-                    // Add video info for transcript mode
+                    // Add video/PDF info for transcript mode
                     if (data.video_info) {
-                        response += `<br><br><strong>📹 Video:</strong> ${data.video_info.title}`;
+                        const isPDF = data.video_info.url && data.video_info.url.includes('PDF_');
+                        const icon = isPDF ? '📄 PDF:' : '📹 Video:';
+                        response += `<br><br><strong>${icon}</strong> ${data.video_info.title}`;
+                    }
+                    
+                    // Add Perplexity research if available
+                    if (data.perplexity_research) {
+                        response += `<br><br><div style="background:#f8f9fa; border-left:4px solid #007bff; padding:15px; margin:10px 0; border-radius:5px;">
+                            <strong>🔬 Deep Research (Perplexity):</strong><br>
+                            ${data.perplexity_research}
+                        </div>`;
                     }
                     
                     addMessage('bot', response);
+                    
+                    // Show follow-up questions
+                    if (data.follow_up_questions && data.follow_up_questions.length > 0) {
+                        showFollowUpQuestions(data.follow_up_questions);
+                    }
+                    
                     questionCount++;
                     document.getElementById('questionsAsked').textContent = questionCount;
                 } else {
@@ -406,11 +503,268 @@
             return messageId;
         }
         
+        // Show follow-up questions
+        function showFollowUpQuestions(questions) {
+            const followUpBox = document.getElementById('followUpQuestions');
+            const followUpList = document.getElementById('followUpList');
+            
+            if (questions && questions.length > 0) {
+                followUpList.innerHTML = questions.map(question => 
+                    `<button class="btn btn-outline-primary btn-sm me-2 mb-2" 
+                             onclick="askFollowUpQuestion('${question.replace(/'/g, "\\'")}')">
+                        ${question}
+                    </button>`
+                ).join('');
+                followUpBox.style.display = 'block';
+            } else {
+                followUpBox.style.display = 'none';
+            }
+        }
+        
+        // Ask a follow-up question
+        function askFollowUpQuestion(question) {
+            document.getElementById('questionInput').value = question;
+            sendQuestion();
+            // Hide follow-up questions after selecting one
+            document.getElementById('followUpQuestions').style.display = 'none';
+        }
+        
         // Enter key support
         document.getElementById('questionInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 sendQuestion();
             }
+        });
+        
+        // Auto-select PDF or video from URL parameters
+        function initializePDFMode() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const docId = urlParams.get('doc_id');
+            const docType = urlParams.get('type');
+            
+            if (docId && docType === 'pdf') {
+                console.log('Initializing PDF mode with doc_id:', docId);
+                
+                // Switch to transcript mode (single document mode)
+                currentMode = 'transcript';
+                console.log('Set currentMode to:', currentMode);
+                
+                // Update mode buttons
+                const collectionBtn = document.getElementById('collectionMode');
+                const transcriptBtn = document.getElementById('transcriptMode');
+                if (collectionBtn && transcriptBtn) {
+                    collectionBtn.classList.remove('active');
+                    transcriptBtn.classList.add('active');
+                }
+                
+                // Show video selection dropdown
+                const videoSelection = document.getElementById('videoSelection');
+                if (videoSelection) {
+                    videoSelection.style.display = 'block';
+                }
+                
+                // Select the PDF in the dropdown
+                const selectElement = document.getElementById('videoSelect');
+                if (selectElement) {
+                    selectElement.value = docId;
+                    console.log('Selected PDF in dropdown:', selectElement.value);
+                }
+                
+                // Update status to show PDF is selected
+                const statusElement = document.getElementById('modeStatus');
+                if (statusElement) {
+                    statusElement.textContent = 'Modus: Chat mit ausgewähltem PDF-Dokument';
+                }
+                
+                // Update the label
+                const label = document.querySelector('label[for="videoSelect"]');
+                if (label) {
+                    label.textContent = 'PDF-Dokument für Chat ausgewählt:';
+                }
+                
+                // Add welcome message for PDF
+                const chatContainer = document.getElementById('chatContainer');
+                if (chatContainer) {
+                    chatContainer.innerHTML = `
+                        <div class="message bot-message">
+                            <strong>🤖 PDF Assistant:</strong><br>
+                            PDF wurde geladen! Du kannst jetzt Fragen zu diesem Dokument stellen.
+                            <br><br>
+                            <em>Beispielfragen:</em><br>
+                            • "Was sind die Hauptpunkte?"<br>
+                            • "Fasse das Dokument zusammen"<br>
+                            • "Was wird über [Thema] gesagt?"<br>
+                            • "Erkläre mir [spezifisches Konzept]"
+                        </div>
+                    `;
+                }
+                
+                console.log('PDF mode initialized successfully');
+                return true;
+            }
+            return false;
+        }
+        
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Debug: Check what's in the dropdown
+            const selectElement = document.getElementById('videoSelect');
+            if (selectElement) {
+                console.log('Dropdown options:');
+                for (let option of selectElement.options) {
+                    console.log(`- Value: "${option.value}", Text: "${option.textContent}", Type: "${option.dataset.type}"`);
+                }
+                
+                // Add change event listener to debug selection
+                selectElement.addEventListener('change', function() {
+                    console.log('Dropdown changed to:', this.value);
+                    const selectedOption = this.options[this.selectedIndex];
+                    console.log('Selected option text:', selectedOption.textContent);
+                    console.log('Selected option type:', selectedOption.dataset.type);
+                });
+            }
+            
+            setTimeout(() => {
+                initializePDFMode();
+            }, 100);
+        });
+        
+        // Also try after window load as fallback
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                if (!initializePDFMode()) {
+                    console.log('No PDF to initialize');
+                }
+            }, 200);
+        });
+        
+        // Drag and Drop Functionality
+        function initializeDragAndDrop() {
+            const chatContainer = document.getElementById('chatContainer');
+            const dropZone = document.getElementById('dropZone');
+            let dragCounter = 0;
+            
+            // Prevent default drag behaviors
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                chatContainer.addEventListener(eventName, preventDefaults, false);
+                document.body.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            // Handle drag enter/leave for proper highlighting
+            chatContainer.addEventListener('dragenter', function(e) {
+                dragCounter++;
+                if (e.dataTransfer.types.includes('Files')) {
+                    dropZone.classList.add('active');
+                }
+            });
+            
+            chatContainer.addEventListener('dragleave', function(e) {
+                dragCounter--;
+                if (dragCounter === 0) {
+                    dropZone.classList.remove('active');
+                }
+            });
+            
+            // Handle file drop
+            chatContainer.addEventListener('drop', function(e) {
+                dragCounter = 0;
+                dropZone.classList.remove('active');
+                
+                const files = Array.from(e.dataTransfer.files);
+                const pdfFiles = files.filter(file => file.type === 'application/pdf');
+                
+                if (pdfFiles.length === 0) {
+                    alert('Bitte nur PDF-Dateien ziehen!');
+                    return;
+                }
+                
+                if (pdfFiles.length > 1) {
+                    alert('Bitte nur eine PDF-Datei gleichzeitig hochladen!');
+                    return;
+                }
+                
+                const pdfFile = pdfFiles[0];
+                
+                // Check file size (50MB limit)
+                const maxSize = 50 * 1024 * 1024;
+                if (pdfFile.size > maxSize) {
+                    alert('PDF-Datei ist zu groß! Maximum: 50MB');
+                    return;
+                }
+                
+                uploadPDFFile(pdfFile);
+            });
+        }
+        
+        // Upload PDF file via drag & drop
+        function uploadPDFFile(file) {
+            const formData = new FormData();
+            formData.append('pdf_file', file);
+            formData.append('generate_summary', 'true');
+            formData.append('summary_type', 'detailed');
+            formData.append('ai_provider', 'openai');
+            
+            // Add loading message to chat
+            const loadingId = addMessage('bot', 
+                '<i class="fas fa-spinner fa-spin"></i> PDF wird hochgeladen und verarbeitet...<br>' +
+                '<small>Das kann einen Moment dauern</small>'
+            );
+            
+            // Upload the file
+            fetch('/api/upload_pdf', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Remove loading message
+                document.getElementById(loadingId).remove();
+                
+                if (data.status === 'success') {
+                    // Switch to PDF mode
+                    switchMode('pdf');
+                    
+                    // Add the new PDF to the dropdown
+                    const pdfSelect = document.getElementById('pdfSelect');
+                    const newOption = document.createElement('option');
+                    newOption.value = data.document_id;
+                    newOption.textContent = `📄 ${data.title}`;
+                    newOption.setAttribute('data-type', 'pdf');
+                    pdfSelect.appendChild(newOption);
+                    
+                    // Select the new PDF
+                    pdfSelect.value = data.document_id;
+                    
+                    // Add success message
+                    addMessage('bot', 
+                        `<strong>✅ PDF erfolgreich hochgeladen!</strong><br><br>` +
+                        `<strong>📄 ${data.title}</strong><br>` +
+                        `Seiten: ${data.total_pages} | Textlänge: ${data.text_length.toLocaleString()} Zeichen<br><br>` +
+                        `Du kannst jetzt Fragen zu diesem PDF stellen!`
+                    );
+                    
+                    // Update mode status
+                    document.getElementById('modeStatus').textContent = 'Modus: Chat mit ausgewählter PDF';
+                    
+                } else {
+                    addMessage('bot', `❌ Upload-Fehler: ${data.message || 'Unbekannter Fehler'}`);
+                }
+            })
+            .catch(error => {
+                document.getElementById(loadingId).remove();
+                addMessage('bot', `❌ Upload-Fehler: ${error.message}`);
+                console.error('Upload error:', error);
+            });
+        }
+        
+        // Initialize drag and drop when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDragAndDrop();
         });
     </script>
 </body>

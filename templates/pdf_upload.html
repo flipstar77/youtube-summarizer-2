@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Upload PDF - YouTube Summarizer{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-lg">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0"><i class="fas fa-file-pdf"></i> Upload PDF Document</h3>
+                </div>
+                <div class="card-body">
+                    <!-- Flash messages -->
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <form method="POST" enctype="multipart/form-data" id="pdfUploadForm">
+                        <!-- File Upload -->
+                        <div class="mb-4">
+                            <label for="pdf_file" class="form-label">
+                                <i class="fas fa-upload text-primary"></i> Select PDF File
+                            </label>
+                            <input type="file" class="form-control" id="pdf_file" name="pdf_file" accept=".pdf" required>
+                            <div class="form-text">Maximum file size: 50MB. Supported format: PDF</div>
+                        </div>
+
+                        <!-- Optional Title -->
+                        <div class="mb-4">
+                            <label for="title" class="form-label">
+                                <i class="fas fa-heading text-info"></i> Document Title (Optional)
+                            </label>
+                            <input type="text" class="form-control" id="title" name="title" 
+                                   placeholder="Leave empty to use filename">
+                            <div class="form-text">Custom title for your document</div>
+                        </div>
+
+                        <!-- Generate Summary Option -->
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="generate_summary" 
+                                       name="generate_summary" checked>
+                                <label class="form-check-label" for="generate_summary">
+                                    <i class="fas fa-magic text-warning"></i> Generate AI Summary
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Summary Options (shown when generate_summary is checked) -->
+                        <div id="summaryOptions">
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <label for="summary_type" class="form-label">
+                                        <i class="fas fa-list-ul text-success"></i> Summary Type
+                                    </label>
+                                    <select class="form-select" id="summary_type" name="summary_type">
+                                        <option value="brief">Brief (2-3 sentences)</option>
+                                        <option value="detailed" selected>Detailed (structured)</option>
+                                        <option value="bullet">Bullet Points</option>
+                                        <option value="professional">Professional Report</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="ai_provider" class="form-label">
+                                        <i class="fas fa-robot text-primary"></i> AI Provider
+                                    </label>
+                                    <select class="form-select" id="ai_provider" name="ai_provider">
+                                        <option value="openai" selected>OpenAI GPT</option>
+                                        <option value="claude">Claude AI</option>
+                                        <option value="gemini">Google Gemini</option>
+                                        <option value="perplexity">Perplexity (Research)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Progress Section (hidden by default) -->
+                        <div id="progressSection" style="display: none;">
+                            <div class="alert alert-info">
+                                <h6><i class="fas fa-spinner fa-spin"></i> Processing PDF...</h6>
+                                <div class="progress mt-2">
+                                    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                         role="progressbar" style="width: 0%"></div>
+                                </div>
+                                <small id="progressText" class="d-block mt-2">Uploading file...</small>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                                <i class="fas fa-cloud-upload-alt"></i> Upload & Process PDF
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Information Card -->
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-info-circle text-info"></i> PDF Processing Features</h5>
+                    <ul class="mb-0">
+                        <li><strong>Text Extraction:</strong> Automatic extraction of all text content</li>
+                        <li><strong>Table Support:</strong> Tables are preserved and converted to readable format</li>
+                        <li><strong>Vector Search:</strong> Content is indexed for semantic search</li>
+                        <li><strong>Smart Chunking:</strong> Document is intelligently split for optimal processing</li>
+                        <li><strong>AI Summaries:</strong> Generate concise summaries of your documents</li>
+                        <li><strong>Q&A Ready:</strong> Ask questions about your PDFs in the chatbot</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Toggle summary options based on checkbox
+document.getElementById('generate_summary').addEventListener('change', function() {
+    const summaryOptions = document.getElementById('summaryOptions');
+    summaryOptions.style.display = this.checked ? 'block' : 'none';
+});
+
+// Handle form submission with progress
+document.getElementById('pdfUploadForm').addEventListener('submit', function(e) {
+    const submitBtn = document.getElementById('submitBtn');
+    const progressSection = document.getElementById('progressSection');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    
+    // Show progress
+    submitBtn.disabled = true;
+    progressSection.style.display = 'block';
+    
+    // Simulate progress updates
+    let progress = 0;
+    const stages = [
+        { percent: 20, text: 'Uploading PDF...' },
+        { percent: 40, text: 'Extracting text content...' },
+        { percent: 60, text: 'Creating vector embeddings...' },
+        { percent: 80, text: 'Generating AI summary...' },
+        { percent: 100, text: 'Finalizing...' }
+    ];
+    
+    let stageIndex = 0;
+    const progressInterval = setInterval(() => {
+        if (stageIndex < stages.length) {
+            const stage = stages[stageIndex];
+            progressBar.style.width = stage.percent + '%';
+            progressText.textContent = stage.text;
+            stageIndex++;
+        } else {
+            clearInterval(progressInterval);
+        }
+    }, 2000);
+});
+
+// File size validation
+document.getElementById('pdf_file').addEventListener('change', function() {
+    const file = this.files[0];
+    const maxSize = 50 * 1024 * 1024; // 50MB
+    
+    if (file && file.size > maxSize) {
+        alert('File size exceeds 50MB limit. Please choose a smaller file.');
+        this.value = '';
+    }
+});
+</script>
+{% endblock %}

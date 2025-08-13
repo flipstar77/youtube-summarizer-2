@@ -18,6 +18,8 @@ from channel_subscriptions import ChannelSubscriptionManager
 from settings_manager import SettingsManager
 from automation_scheduler import AutomationScheduler
 from srt_chaptering import SRTChapteringSystem
+from pdf_processor import PDFProcessor
+from ai_council import AICouncil
 
 load_dotenv()
 
@@ -929,6 +931,24 @@ try:
 except Exception as e:
     print(f"[WARNING] Highlight Extractor disabled: {str(e)}")
 
+# Initialize PDF processor
+pdf_processor = None
+try:
+    pdf_processor = PDFProcessor(db=db, vectorizer=vectorizer)
+    print("[OK] PDF Processor initialized")
+except Exception as e:
+    print(f"[WARNING] PDF Processor disabled: {str(e)}")
+
+# Initialize AI Council
+ai_council = None
+try:
+    ai_council = AICouncil()
+    print("[OK] AI Council initialized")
+except Exception as e:
+    print(f"[WARNING] AI Council disabled: {str(e)}")
+
+# Initialize SRT Chaptering System
+srt_chaptering = None
 try:
     srt_chaptering = SRTChapteringSystem()
     print("[OK] SRT Chaptering System initialized")
@@ -1042,6 +1062,8 @@ def api_ask_question():
         
         data = request.get_json()
         question = data.get('question', '').strip()
+        use_perplexity = data.get('use_perplexity', False)
+        video_id = data.get('video_id', '').strip()  # Specific document selection
         
         if not question:
             return jsonify({
@@ -1050,14 +1072,76 @@ def api_ask_question():
             }), 400
         
         # Ask question to the chatbot
-        response = chatbot.ask_question(question, max_videos=5)
+        if video_id:
+            # Ask about specific document (video or PDF)
+            response = chatbot.chat_with_transcript(video_id, question)
+        else:
+            # Ask about entire collection
+            response = chatbot.ask_question(question, max_videos=5)
+        
+        # If Perplexity is requested, get deep research
+        perplexity_research = None
+        if use_perplexity and enhanced_summarizer and 'perplexity' in enhanced_summarizer.providers:
+            try:
+                # Create research prompt
+                research_prompt = f"""Based on this question: "{question}"
+                And this initial answer: "{response['answer'][:500]}..."
+                
+                Provide deep research and additional context:
+                1. External facts and current information
+                2. Related concepts and theories
+                3. Recent developments or news
+                4. Expert perspectives
+                5. Additional resources to explore"""
+                
+                perplexity_research = enhanced_summarizer.summarize(
+                    text=research_prompt,
+                    summary_type='custom',
+                    provider='perplexity',
+                    custom_prompt="Provide comprehensive research and context"
+                )
+            except Exception as e:
+                print(f"[WARNING] Perplexity research failed: {str(e)}")
+        
+        # Generate follow-up questions
+        follow_up_questions = []
+        try:
+            # Use AI to generate relevant follow-up questions
+            if response['answer']:
+                follow_up_prompt = f"""Based on this Q&A:
+                Question: {question}
+                Answer: {response['answer'][:500]}...
+                
+                Generate 3 relevant follow-up questions that would help explore this topic deeper.
+                Return only the questions, one per line."""
+                
+                if enhanced_summarizer:
+                    questions_text = enhanced_summarizer.summarize(
+                        text=follow_up_prompt,
+                        summary_type='custom',
+                        provider='openai',
+                        custom_prompt="Generate 3 follow-up questions, one per line",
+                        max_tokens=150
+                    )
+                    follow_up_questions = [q.strip() for q in questions_text.split('\n') if q.strip() and not q.startswith('#')][:3]
+        except Exception as e:
+            print(f"[WARNING] Follow-up questions generation failed: {str(e)}")
+            # Fallback to simple related questions
+            follow_up_questions = [
+                f"What are the key details about {question.split()[0] if question else 'this topic'}?",
+                f"Can you explain more about the context?",
+                f"What are the practical implications?"
+            ]
         
         return jsonify({
             'status': 'success',
             'answer': response['answer'],
-            'sources': response['sources'],
+            'sources': response.get('sources', []),  # Handle missing sources key
             'question': response['question'],
-            'videos_analyzed': response.get('videos_analyzed', 0)
+            'videos_analyzed': response.get('videos_analyzed', 0),
+            'video_info': response.get('video_info'),  # Include video_info for transcript mode
+            'perplexity_research': perplexity_research,
+            'follow_up_questions': follow_up_questions
         })
         
     except Exception as e:
@@ -1925,6 +2009,368 @@ def download_chapters(filename):
     except Exception as e:
         print(f"[ERROR] Chapter download failed: {e}")
         return f"Download failed: {str(e)}", 500
+
+# PDF Upload Routes
+@app.route('/upload_pdf', methods=['GET', 'POST'])
+def upload_pdf():
+    """Handle PDF upload and processing"""
+    if request.method == 'GET':
+        return render_template('pdf_upload.html')
+    
+    try:
+        # Check if PDF processor is available
+        if not pdf_processor:
+            flash('PDF processing is not available. Please check configuration.', 'error')
+            return redirect(url_for('index'))
+        
+        # Check if file was uploaded
+        if 'pdf_file' not in request.files:
+            flash('No file selected', 'error')
+            return redirect(request.url)
+        
+        file = request.files['pdf_file']
+        
+        # Check if file is empty
+        if file.filename == '':
+            flash('No file selected', 'error')
+            return redirect(request.url)
+        
+        # Check file extension
+        if not file.filename.lower().endswith('.pdf'):
+            flash('Please upload a PDF file', 'error')
+            return redirect(request.url)
+        
+        # Save uploaded file
+        import tempfile
+        import shutil
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
+            file.save(tmp_file.name)
+            temp_path = tmp_file.name
+        
+        try:
+            # Get optional parameters
+            title = request.form.get('title', '').strip()
+            generate_summary = request.form.get('generate_summary') == 'on'
+            summary_type = request.form.get('summary_type', 'detailed')
+            ai_provider = request.form.get('ai_provider', 'openai')
+            
+            # Process PDF
+            result = pdf_processor.process_pdf(
+                file_path=temp_path,
+                title=title or file.filename
+            )
+            
+            if not result['success']:
+                flash(f"PDF processing failed: {result.get('error', 'Unknown error')}", 'error')
+                return redirect(request.url)
+            
+            # Generate summary if requested
+            if generate_summary and result.get('summary_id'):
+                try:
+                    # Get the stored content
+                    if hasattr(db, 'client'):
+                        summary_data = db.client.table('summaries').select('*').eq('id', result['summary_id']).execute()
+                        if summary_data.data:
+                            content = summary_data.data[0]['summary']
+                            
+                            # Generate enhanced summary
+                            if enhanced_summarizer:
+                                summary = enhanced_summarizer.summarize(
+                                    text=content,
+                                    summary_type=summary_type,
+                                    provider=ai_provider
+                                )
+                                
+                                # Update with generated summary
+                                db.client.table('summaries').update({
+                                    'summary': summary,
+                                    'summary_type': summary_type
+                                }).eq('id', result['summary_id']).execute()
+                                
+                                flash(f'PDF processed and summarized successfully! {result["chunks"]} chunks created with embeddings.', 'success')
+                            else:
+                                flash(f'PDF processed successfully! {result["chunks"]} chunks created. Summary generation not available.', 'warning')
+                except Exception as e:
+                    print(f"[ERROR] Summary generation failed: {str(e)}")
+                    flash(f'PDF processed but summary generation failed: {str(e)}', 'warning')
+            else:
+                flash(f'PDF processed successfully! {result["chunks"]} chunks created with embeddings.', 'success')
+            
+            # Redirect to chatbot with PDF pre-selected
+            if result.get('summary_id'):
+                # Redirect to chatbot with the PDF document selected
+                return redirect(f'/chatbot?doc_id={result["document_id"]}&type=pdf')
+            else:
+                return redirect('/chatbot')
+            
+        finally:
+            # Clean up temp file
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+                
+    except Exception as e:
+        print(f"[ERROR] PDF upload failed: {str(e)}")
+        flash(f'Error processing PDF: {str(e)}', 'error')
+        return redirect(request.url)
+
+@app.route('/api/upload_pdf', methods=['POST'])
+def api_upload_pdf():
+    """API endpoint for drag & drop PDF upload (returns JSON)"""
+    try:
+        # Check if PDF processor is available
+        if not pdf_processor:
+            return jsonify({
+                'status': 'error',
+                'message': 'PDF processing is not available'
+            }), 500
+        
+        # Check if file was uploaded
+        if 'pdf_file' not in request.files:
+            return jsonify({
+                'status': 'error',
+                'message': 'No file uploaded'
+            }), 400
+        
+        file = request.files['pdf_file']
+        
+        # Check if file is empty
+        if file.filename == '':
+            return jsonify({
+                'status': 'error',
+                'message': 'No file selected'
+            }), 400
+        
+        # Check file extension
+        if not file.filename.lower().endswith('.pdf'):
+            return jsonify({
+                'status': 'error',
+                'message': 'Please upload a PDF file'
+            }), 400
+        
+        # Save uploaded file
+        import tempfile
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
+            file.save(tmp_file.name)
+            temp_path = tmp_file.name
+        
+        try:
+            # Get optional parameters
+            title = request.form.get('title', '').strip()
+            generate_summary = request.form.get('generate_summary') == 'true'
+            summary_type = request.form.get('summary_type', 'detailed')
+            ai_provider = request.form.get('ai_provider', 'openai')
+            
+            # Process PDF
+            result = pdf_processor.process_pdf(
+                file_path=temp_path,
+                title=title or file.filename
+            )
+            
+            if not result['success']:
+                return jsonify({
+                    'status': 'error',
+                    'message': f"PDF processing failed: {result.get('error', 'Unknown error')}"
+                }), 500
+            
+            # Generate summary if requested
+            if generate_summary and result.get('summary_id') and enhanced_summarizer:
+                try:
+                    # Get the stored content
+                    if hasattr(db, 'client'):
+                        summary_data = db.client.table('summaries').select('*').eq('id', result['summary_id']).execute()
+                        if summary_data.data:
+                            content = summary_data.data[0]['summary']
+                            
+                            # Generate enhanced summary
+                            summary = enhanced_summarizer.summarize(
+                                text=content,
+                                summary_type=summary_type,
+                                provider=ai_provider
+                            )
+                            
+                            # Update with generated summary
+                            db.client.table('summaries').update({
+                                'summary': summary,
+                                'summary_type': summary_type
+                            }).eq('id', result['summary_id']).execute()
+                            
+                except Exception as e:
+                    print(f"[WARNING] Summary generation failed: {str(e)}")
+            
+            return jsonify({
+                'status': 'success',
+                'message': 'PDF uploaded and processed successfully',
+                'document_id': result['document_id'],
+                'summary_id': result.get('summary_id'),
+                'title': result['title'],
+                'total_pages': result['total_pages'],
+                'text_length': result['text_length'],
+                'chunks': result['chunks']
+            })
+            
+        finally:
+            # Clean up temp file
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+                
+    except Exception as e:
+        print(f"[ERROR] API PDF upload failed: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': f'Upload failed: {str(e)}'
+        }), 500
+
+@app.route('/pdf_library')
+def pdf_library():
+    """View all uploaded PDFs"""
+    try:
+        # Get all PDF documents from database
+        if hasattr(db, 'client'):
+            # Supabase
+            result = db.client.table('summaries').select('*').like('url', '%PDF_%').order('created_at', desc=True).execute()
+            pdfs = result.data if result.data else []
+        else:
+            # SQLite fallback
+            all_summaries = db.get_all_summaries()
+            pdfs = [s for s in all_summaries if 'PDF_' in s.get('url', '')]
+        
+        return render_template('pdf_library.html', pdfs=pdfs)
+        
+    except Exception as e:
+        print(f"[ERROR] Failed to load PDF library: {str(e)}")
+        flash('Error loading PDF library', 'error')
+        return redirect(url_for('index'))
+
+# AI Council Routes
+@app.route('/ai_council')
+def ai_council_interface():
+    """AI Council interface for multi-AI discussions"""
+    try:
+        if not ai_council:
+            flash('AI Council nicht verfügbar. Bitte prüfe die Konfiguration.', 'error')
+            return redirect(url_for('index'))
+        
+        council_members = ai_council.get_available_members()
+        return render_template('ai_council.html', council_members=council_members)
+    except Exception as e:
+        flash(f'Fehler beim Laden der AI Council Seite: {str(e)}', 'error')
+        return redirect(url_for('index'))
+
+@app.route('/api/ai_council/start_session', methods=['POST'])
+def api_ai_council_start_session():
+    """API endpoint to start an AI Council session"""
+    try:
+        if not ai_council:
+            return jsonify({
+                'status': 'error',
+                'message': 'AI Council nicht verfügbar'
+            }), 400
+        
+        data = request.get_json()
+        question = data.get('question', '').strip()
+        context = data.get('context', '').strip()
+        discussion_rounds = data.get('discussion_rounds', 2)
+        show_discussion = data.get('show_discussion', True)
+        save_session = data.get('save_session', True)
+        
+        if not question:
+            return jsonify({
+                'status': 'error',
+                'message': 'Frage darf nicht leer sein'
+            }), 400
+        
+        # Run the council session (this will be async in the future)
+        import asyncio
+        
+        async def run_session():
+            return await ai_council.hold_council_session(
+                question=question,
+                context=context,
+                discussion_rounds=discussion_rounds
+            )
+        
+        # For now, run synchronously (we'll make this async later)
+        try:
+            session = asyncio.run(run_session())
+        except Exception as e:
+            print(f"[AI COUNCIL ERROR] Session failed: {str(e)}")
+            return jsonify({
+                'status': 'error', 
+                'message': f'Council session failed: {str(e)}'
+            }), 500
+        
+        # Convert session to serializable format
+        session_data = {
+            'question': session.question,
+            'consensus': session.consensus,
+            'final_answer': session.final_answer,
+            'session_summary': session.session_summary,
+            'started_at': session.started_at.isoformat() if session.started_at else None,
+            'completed_at': session.completed_at.isoformat() if session.completed_at else None,
+            'discussion_rounds': []
+        }
+        
+        # Include discussion rounds if requested
+        if show_discussion:
+            for round_responses in session.discussion_rounds:
+                round_data = []
+                for response in round_responses:
+                    round_data.append({
+                        'member': response.member,
+                        'role': response.role,
+                        'response': response.response,
+                        'timestamp': response.timestamp.isoformat(),
+                        'reasoning': response.reasoning
+                    })
+                session_data['discussion_rounds'].append(round_data)
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Council session completed successfully',
+            'session': session_data
+        })
+        
+    except Exception as e:
+        print(f"[API ERROR] AI Council session failed: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': f'Error: {str(e)}'
+        }), 500
+
+@app.route('/api/ai_council/history', methods=['GET'])
+def api_ai_council_history():
+    """API endpoint to get AI Council session history"""
+    try:
+        if not ai_council:
+            return jsonify({
+                'status': 'error',
+                'message': 'AI Council nicht verfügbar'
+            }), 400
+        
+        sessions = ai_council.get_session_history()
+        
+        # Convert sessions to serializable format
+        sessions_data = []
+        for session in sessions[-10:]:  # Last 10 sessions
+            sessions_data.append({
+                'question': session.question,
+                'session_summary': session.session_summary,
+                'started_at': session.started_at.isoformat() if session.started_at else None,
+                'completed_at': session.completed_at.isoformat() if session.completed_at else None
+            })
+        
+        return jsonify({
+            'status': 'success',
+            'sessions': sessions_data
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Error loading history: {str(e)}'
+        }), 500
 
 if __name__ == '__main__':
     # Check for required environment variables

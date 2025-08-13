@@ -4,6 +4,14 @@ import json
 from openai import OpenAI
 from dotenv import load_dotenv
 
+# Import xai_sdk for Grok
+try:
+    from xai_sdk import Client as XAIClient
+    from xai_sdk.chat import user, system
+    XAI_AVAILABLE = True
+except ImportError:
+    XAI_AVAILABLE = False
+
 load_dotenv()
 
 
@@ -109,23 +117,31 @@ class EnhancedSummarizer:
         }
     
     def _init_grok(self):
-        """Initialize Grok API"""
+        """Initialize Grok API using native xai_sdk"""
         api_key = os.getenv('XAI_API_KEY')
-        if not api_key:
+        if not api_key or not XAI_AVAILABLE:
             return None
-        return {
-            'api_key': api_key,
-            'base_url': 'https://api.x.ai/v1/chat/completions',
-            'models': [
-                'grok-3',
-                'grok-3-mini-beta',
-                'grok-3-reasoner',
-                'grok-3-deepsearch',
-                'grok-2-latest',
-                'grok-2-vision-latest'
-            ],
-            'type': 'grok'
-        }
+        try:
+            client = XAIClient(
+                api_key=api_key,
+                timeout=3600  # Longer timeout for reasoning models
+            )
+            return {
+                'client': client,
+                'api_key': api_key,
+                'models': [
+                    'grok-4',
+                    'grok-3',
+                    'grok-3-mini-beta',
+                    'grok-3-reasoner',
+                    'grok-3-deepsearch',
+                    'grok-2-latest'
+                ],
+                'type': 'grok'
+            }
+        except Exception as e:
+            print(f"[WARNING] Failed to initialize Grok: {str(e)}")
+            return None
     
     def _init_claude(self):
         """Initialize Claude/Anthropic API"""
@@ -434,6 +450,30 @@ Transcript:
         except Exception as e:
             raise Exception(f"OpenAI error: {str(e)}")
     
+    def _summarize_with_grok(self, provider_config, text, summary_type="detailed", model=None, custom_prompt=None, max_tokens=None):
+        """Summarize using Grok API with native xai_sdk"""
+        try:
+            model = model or 'grok-4'
+            client = provider_config['client']
+            
+            # Create a new chat session
+            chat = client.chat.create(model=model)
+            
+            # Add system prompt
+            system_prompt = self._get_system_prompt(summary_type)
+            chat.append(system(system_prompt))
+            
+            # Add user prompt
+            user_prompt = self._get_user_prompt(text, summary_type, custom_prompt)
+            chat.append(user(user_prompt))
+            
+            # Get response
+            response = chat.sample()
+            return response.content.strip()
+            
+        except Exception as e:
+            raise Exception(f"Grok API error: {str(e)}")
+    
     def _summarize_with_api(self, provider_config, text, summary_type="detailed", model=None, custom_prompt=None, max_tokens=None):
         """Generic method for API-based providers (Perplexity, DeepSeek, Grok)"""
         try:
@@ -570,8 +610,10 @@ Transcript:
                 return self._summarize_with_gemini(provider_config, chunk, summary_type, model, custom_prompt, max_tokens)
             elif provider_config['type'] == 'claude':
                 return self._summarize_with_claude(provider_config, chunk, summary_type, model, custom_prompt, max_tokens)
+            elif provider_config['type'] == 'grok':
+                return self._summarize_with_grok(provider_config, chunk, summary_type, model, custom_prompt, max_tokens)
             else:
-                # Perplexity, DeepSeek, Grok
+                # Perplexity, DeepSeek
                 return self._summarize_with_api(provider_config, chunk, summary_type, model, custom_prompt, max_tokens)
                 
         except Exception as e:

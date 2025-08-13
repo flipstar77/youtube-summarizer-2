@@ -112,7 +112,7 @@ Example:
                         <div class="form-text">
                             <i class="fas fa-lightbulb text-warning"></i> 
                             Choose your preferred AI provider. Each offers unique strengths:
-                            <strong>OpenAI</strong> (balanced), <strong>Perplexity</strong> (web-aware), 
+                            <strong>OpenAI</strong> (balanced), <strong>Perplexity</strong> (deep research + web context), 
                             <strong>DeepSeek</strong> (reasoning), <strong>Gemini</strong> (advanced), 
                             <strong>Grok</strong> (creative), <strong>Claude</strong> (helpful)
                         </div>
@@ -237,7 +237,7 @@ function populateProviderSelect(providers, defaultProvider) {
     // Add provider options
     const providerNames = {
         'openai': '🤖 OpenAI - GPT Models',
-        'perplexity': '🔍 Perplexity - Web-Aware AI',
+        'perplexity': '🔍 Perplexity - Deep Research & Web Context',
         'deepseek': '🧠 DeepSeek - Advanced Reasoning',
         'gemini': '💎 Google Gemini - Latest AI',
         'grok': '⚡ Grok - xAI\'s Creative Model',
@@ -289,7 +289,7 @@ function updateAIStatus(provider) {
     
     const statuses = {
         'openai': { icon: 'text-success', text: 'Ready' },
-        'perplexity': { icon: 'text-info', text: 'Web Search' },
+        'perplexity': { icon: 'text-info', text: 'Research Mode' },
         'deepseek': { icon: 'text-primary', text: 'Reasoning' },
         'gemini': { icon: 'text-warning', text: 'Advanced' },
         'grok': { icon: 'text-danger', text: 'Creative' },

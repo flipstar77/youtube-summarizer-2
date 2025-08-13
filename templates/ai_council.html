@@ -1,0 +1,1266 @@
+{% extends "base.html" %}
+
+{% block title %}AI Council - YouTube Summarizer{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header Card -->
+            <div class="card mb-4">
+                <div class="card-header bg-gradient-primary text-white">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h3 class="mb-0"><i class="fas fa-users"></i> AI Council</h3>
+                            <small>Multi-AI Consensus & Deep Analysis</small>
+                        </div>
+                        <div class="col-auto">
+                            <span class="badge bg-light text-dark">
+                                <i class="fas fa-robot"></i> {{ council_members|length }} AI Members
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">
+                        <strong>🧠 Collective Intelligence:</strong> Submit complex questions to our AI Council. 
+                        Multiple AI models will discuss, debate, and reach consensus for more comprehensive answers.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Council Members Overview -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h5><i class="fas fa-users-cog"></i> Council Members</h5>
+                    <div class="row">
+                        {% for member in council_members %}
+                        <div class="col-lg-4 col-md-6 mb-3">
+                            <div class="card border-primary h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="fas fa-robot text-primary"></i> {{ member.name }}
+                                    </h6>
+                                    <p class="card-text">
+                                        <strong>Role:</strong> {{ member.role }}<br>
+                                        <strong>Expertise:</strong> {{ member.expertise }}<br>
+                                        <small class="text-muted">{{ member.personality }}</small>
+                                    </p>
+                                    <span class="badge bg-info">{{ member.provider }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Question Submission -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-question-circle"></i> Submit Question to Council</h5>
+                </div>
+                <div class="card-body">
+                    <form id="councilForm">
+                        <div class="mb-3">
+                            <label for="councilQuestion" class="form-label">Your Question</label>
+                            <textarea class="form-control" id="councilQuestion" rows="3" 
+                                    placeholder="Ask a complex question that would benefit from multiple AI perspectives..."
+                                    maxlength="1000" required></textarea>
+                            <div class="form-text">
+                                <span id="charCount">0</span>/1000 characters. 
+                                Best for: strategic decisions, complex analysis, creative problem-solving.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="councilContext" class="form-label">Additional Context (Optional)</label>
+                            <textarea class="form-control" id="councilContext" rows="2" 
+                                    placeholder="Provide any background information, constraints, or specific requirements..."
+                                    maxlength="500"></textarea>
+                            <div class="form-text">
+                                <span id="contextCharCount">0</span>/500 characters
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="discussionRounds" class="form-label">Discussion Rounds</label>
+                                <select class="form-select" id="discussionRounds">
+                                    <option value="2" selected>2 Rounds (Recommended)</option>
+                                    <option value="1">1 Round (Quick)</option>
+                                    <option value="3">3 Rounds (Deep Analysis)</option>
+                                </select>
+                                <div class="form-text">More rounds = deeper discussion but longer wait time</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Panel Options</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="showDiscussion" checked>
+                                    <label class="form-check-label" for="showDiscussion">
+                                        Show live panel discussion
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="saveSession" checked>
+                                    <label class="form-check-label" for="saveSession">
+                                        Save session to history
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-lg" id="submitCouncil">
+                            <i class="fas fa-comments"></i> Start Council Discussion
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Live Panel Discussion Interface -->
+            <div id="councilSession" class="panel-discussion-container" style="display: none;">
+                <!-- Top Status Bar -->
+                <div class="panel-status-bar">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h5><i class="fas fa-broadcast-tower"></i> Live AI Panel Discussion</h5>
+                            <small id="sessionStatus">Initializing AI Council...</small>
+                        </div>
+                        <div class="col-auto">
+                            <div class="progress" style="width: 200px;">
+                                <div id="sessionProgress" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Discussion Area -->
+                <div class="row panel-main-area">
+                    <!-- Chat Sidebar -->
+                    <div class="col-md-4 chat-sidebar">
+                        <div class="sidebar-header">
+                            <h6><i class="fas fa-users"></i> AI Council Members</h6>
+                            <span class="online-count">6 online</span>
+                        </div>
+                        
+                        <!-- Members List -->
+                        <div class="members-list">
+                            <div class="member-item" data-ai="Dr. Analysis">
+                                <div class="avatar-sm da">DA</div>
+                                <div class="member-info">
+                                    <div class="member-name">Dr. Analysis</div>
+                                    <div class="member-status">Chief Analyst • <span class="status-dot online"></span> Online</div>
+                                </div>
+                            </div>
+                            <div class="member-item" data-ai="Claude Critic">
+                                <div class="avatar-sm cc">CC</div>
+                                <div class="member-info">
+                                    <div class="member-name">Claude Critic</div>
+                                    <div class="member-status">Critical Evaluator • <span class="status-dot online"></span> Online</div>
+                                </div>
+                            </div>
+                            <div class="member-item" data-ai="Gemini Synthesizer">
+                                <div class="avatar-sm gs">GS</div>
+                                <div class="member-info">
+                                    <div class="member-name">Gemini Synthesizer</div>
+                                    <div class="member-status">Synthesis Specialist • <span class="status-dot online"></span> Online</div>
+                                </div>
+                            </div>
+                            <div class="member-item" data-ai="Perplexity Researcher">
+                                <div class="avatar-sm pr">PR</div>
+                                <div class="member-info">
+                                    <div class="member-name">Perplexity Researcher</div>
+                                    <div class="member-status">Research Specialist • <span class="status-dot online"></span> Online</div>
+                                </div>
+                            </div>
+                            <div class="member-item" data-ai="Grok Challenger">
+                                <div class="avatar-sm gc">GC</div>
+                                <div class="member-info">
+                                    <div class="member-name">Grok Challenger</div>
+                                    <div class="member-status">Devil's Advocate • <span class="status-dot online"></span> Online</div>
+                                </div>
+                            </div>
+                            <div class="member-item" data-ai="DeepSeek Strategist">
+                                <div class="avatar-sm ds">DS</div>
+                                <div class="member-info">
+                                    <div class="member-name">DeepSeek Strategist</div>
+                                    <div class="member-status">Strategic Planner • <span class="status-dot online"></span> Online</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Chat Messages -->
+                        <div class="quick-messages">
+                            <div class="sidebar-divider">Live Discussion</div>
+                            <div id="sidebarMessages" class="sidebar-messages"></div>
+                        </div>
+                    </div>
+
+                    <!-- Main Panel Area -->
+                    <div class="col-md-8 panel-main">
+                        <!-- Current Speaker -->
+                        <div id="currentSpeaker" class="current-speaker" style="display: none;">
+                            <div class="speaker-avatar"></div>
+                            <div class="speaker-info">
+                                <h6 class="speaker-name"></h6>
+                                <p class="speaker-role"></p>
+                            </div>
+                            <div class="speaking-indicator">
+                                <div class="wave"></div>
+                                <div class="wave"></div>
+                                <div class="wave"></div>
+                            </div>
+                        </div>
+
+                        <!-- Discussion Transcript -->
+                        <div id="discussionTranscript" class="discussion-transcript">
+                            <div class="transcript-welcome">
+                                <i class="fas fa-microphone fa-3x mb-3"></i>
+                                <h5>AI Council Panel Discussion</h5>
+                                <p>The discussion will begin shortly...</p>
+                            </div>
+                        </div>
+
+                        <!-- Panel Summary -->
+                        <div id="panelSummary" class="panel-summary" style="display: none;">
+                            <div class="summary-consensus">
+                                <h6><i class="fas fa-handshake"></i> Panel Consensus</h6>
+                                <div id="consensusContent"></div>
+                            </div>
+                            
+                            <div class="summary-final">
+                                <h6><i class="fas fa-gavel"></i> Final Verdict</h6>
+                                <div id="finalAnswerContent"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Session History -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-history"></i> Previous Council Sessions</h5>
+                </div>
+                <div class="card-body">
+                    <div id="sessionHistory">
+                        <p class="text-muted">No previous sessions yet. Start your first council discussion above!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Character counters
+document.getElementById('councilQuestion').addEventListener('input', function() {
+    const count = this.value.length;
+    document.getElementById('charCount').textContent = count;
+    if (count > 900) {
+        document.getElementById('charCount').style.color = 'red';
+    } else {
+        document.getElementById('charCount').style.color = '';
+    }
+});
+
+document.getElementById('councilContext').addEventListener('input', function() {
+    const count = this.value.length;
+    document.getElementById('contextCharCount').textContent = count;
+    if (count > 450) {
+        document.getElementById('contextCharCount').style.color = 'red';
+    } else {
+        document.getElementById('contextCharCount').style.color = '';
+    }
+});
+
+// Council form submission
+document.getElementById('councilForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    startCouncilSession();
+});
+
+function startCouncilSession() {
+    const question = document.getElementById('councilQuestion').value.trim();
+    const context = document.getElementById('councilContext').value.trim();
+    const rounds = document.getElementById('discussionRounds').value;
+    const showDiscussion = document.getElementById('showDiscussion').checked;
+    const saveSession = document.getElementById('saveSession').checked;
+    
+    if (!question) {
+        alert('Please enter a question for the council to discuss.');
+        return;
+    }
+    
+    // Show session area
+    const sessionCard = document.getElementById('councilSession');
+    sessionCard.style.display = 'block';
+    sessionCard.scrollIntoView({ behavior: 'smooth' });
+    
+    // Reset session display
+    document.getElementById('discussionRounds').innerHTML = '';
+    document.getElementById('consensusSection').style.display = 'none';
+    document.getElementById('finalAnswerSection').style.display = 'none';
+    
+    // Disable form
+    document.getElementById('submitCouncil').disabled = true;
+    document.getElementById('submitCouncil').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Council in Session...';
+    
+    // Start session
+    runCouncilSession(question, context, rounds, showDiscussion, saveSession);
+}
+
+async function runCouncilSession(question, context, rounds, showDiscussion, saveSession) {
+    try {
+        updateSessionStatus('Starting AI Council session...', 10);
+        
+        const response = await fetch('/api/ai_council/start_session', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                question: question,
+                context: context,
+                discussion_rounds: parseInt(rounds),
+                show_discussion: showDiscussion,
+                save_session: saveSession
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            displayCouncilResults(data.session, showDiscussion);
+        } else {
+            throw new Error(data.message || 'Council session failed');
+        }
+        
+    } catch (error) {
+        console.error('Council session error:', error);
+        updateSessionStatus(`Error: ${error.message}`, 0);
+        document.getElementById('sessionStatus').className = 'alert alert-danger';
+    } finally {
+        // Re-enable form
+        document.getElementById('submitCouncil').disabled = false;
+        document.getElementById('submitCouncil').innerHTML = '<i class="fas fa-comments"></i> Start Council Discussion';
+    }
+}
+
+function updateSessionStatus(message, progress) {
+    document.getElementById('sessionStatus').innerHTML = 
+        `<i class="fas fa-spinner fa-spin"></i> ${message}`;
+    document.getElementById('sessionProgress').style.width = `${progress}%`;
+}
+
+function displayCouncilResults(session, showDiscussion) {
+    updateSessionStatus('Council session completed!', 100);
+    document.getElementById('sessionStatus').className = 'alert alert-success';
+    document.getElementById('sessionStatus').innerHTML = 
+        '<i class="fas fa-check"></i> Council session completed successfully!';
+    
+    // Show discussion rounds if requested
+    if (showDiscussion && session.discussion_rounds) {
+        displayDiscussionRounds(session.discussion_rounds);
+    }
+    
+    // Show consensus
+    if (session.consensus) {
+        displayConsensus(session.consensus);
+    }
+    
+    // Show final answer
+    if (session.final_answer) {
+        displayFinalAnswer(session.final_answer);
+    }
+    
+    // Update history
+    loadSessionHistory();
+}
+
+function displayDiscussionRounds(discussionRounds) {
+    // Initialize panel discussion interface
+    const transcript = document.getElementById('discussionTranscript');
+    const sidebarMessages = document.getElementById('sidebarMessages');
+    const currentSpeaker = document.getElementById('currentSpeaker');
+    
+    // Clear previous content
+    transcript.innerHTML = '';
+    sidebarMessages.innerHTML = '';
+    
+    let messageDelay = 0;
+    
+    discussionRounds.forEach((round, roundIndex) => {
+        // Add round header to transcript
+        setTimeout(() => {
+            addRoundHeader(transcript, roundIndex + 1);
+        }, messageDelay);
+        messageDelay += 500;
+        
+        // Add each AI response
+        round.forEach((response, index) => {
+            setTimeout(() => {
+                // Show current speaker
+                showCurrentSpeaker(currentSpeaker, response);
+                
+                // Add to sidebar
+                addSidebarMessage(sidebarMessages, response);
+                
+                // Add to main transcript after a delay
+                setTimeout(() => {
+                    addTranscriptMessage(transcript, response);
+                    highlightMember(response.member);
+                }, 1500); // Wait 1.5s for "speaking" effect
+                
+            }, messageDelay);
+            messageDelay += 3000; // 3 seconds between speakers
+        });
+        
+        // Add break between rounds
+        messageDelay += 1000;
+    });
+}
+
+function addRoundHeader(transcript, roundNumber) {
+    const header = document.createElement('div');
+    header.className = 'round-header';
+    header.innerHTML = `
+        <div class="text-center my-4">
+            <div class="badge bg-primary px-3 py-2">
+                <i class="fas fa-comment-dots"></i> Discussion Round ${roundNumber}
+            </div>
+        </div>
+    `;
+    transcript.appendChild(header);
+}
+
+function showCurrentSpeaker(container, response) {
+    container.style.display = 'flex';
+    const avatar = container.querySelector('.speaker-avatar');
+    const name = container.querySelector('.speaker-name');
+    const role = container.querySelector('.speaker-role');
+    
+    // Set avatar
+    avatar.textContent = getAIInitial(response.member);
+    avatar.className = `speaker-avatar ${getAIClass(response.member)}`;
+    
+    // Set info
+    name.textContent = response.member;
+    role.textContent = response.role;
+}
+
+function addSidebarMessage(container, response) {
+    const message = document.createElement('div');
+    message.className = 'sidebar-message';
+    message.innerHTML = `
+        <strong>${response.member}:</strong> ${response.response.substring(0, 50)}...
+    `;
+    container.appendChild(message);
+    container.scrollTop = container.scrollHeight;
+}
+
+function addTranscriptMessage(container, response) {
+    const message = document.createElement('div');
+    message.className = 'transcript-message';
+    
+    const timestamp = new Date(response.timestamp).toLocaleTimeString('de-DE', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+    
+    message.innerHTML = `
+        <div class="transcript-header">
+            <div class="transcript-avatar ${getAIClass(response.member)}">${getAIInitial(response.member)}</div>
+            <h6 class="transcript-name">${response.member}</h6>
+            <small class="transcript-time">${timestamp}</small>
+        </div>
+        <div class="transcript-content">
+            ${formatMessageText(response.response)}
+            ${response.reasoning && response.reasoning !== 'No explicit reasoning provided' ? 
+                `<div class="mt-2 text-muted"><small><em>💭 ${response.reasoning}</em></small></div>` : ''}
+        </div>
+    `;
+    
+    container.appendChild(message);
+    container.scrollTop = container.scrollHeight;
+}
+
+function highlightMember(memberName) {
+    // Remove previous highlights
+    document.querySelectorAll('.member-item').forEach(item => {
+        item.classList.remove('speaking');
+    });
+    
+    // Add highlight to current speaker
+    const memberItem = document.querySelector(`[data-ai="${memberName}"]`);
+    if (memberItem) {
+        memberItem.classList.add('speaking');
+        
+        // Remove highlight after 2 seconds
+        setTimeout(() => {
+            memberItem.classList.remove('speaking');
+        }, 2000);
+    }
+}
+
+function getAIClass(aiName) {
+    const classes = {
+        'Dr. Analysis': 'da',
+        'Claude Critic': 'cc', 
+        'Gemini Synthesizer': 'gs',
+        'Perplexity Researcher': 'pr',
+        'Grok Challenger': 'gc',
+        'DeepSeek Strategist': 'ds'
+    };
+    return classes[aiName] || 'da';
+}
+
+function addRoundSeparator(container, roundNumber) {
+    const separator = document.createElement('div');
+    separator.className = 'round-separator';
+    separator.innerHTML = `<span>Round ${roundNumber}</span>`;
+    container.appendChild(separator);
+}
+
+function addAIChatMessage(container, response) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'ai-message';
+    messageDiv.setAttribute('data-ai', response.member);
+    
+    // Get AI avatar initial
+    const initial = getAIInitial(response.member);
+    const timestamp = new Date(response.timestamp).toLocaleTimeString('de-DE', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+    
+    messageDiv.innerHTML = `
+        <div class="avatar">${initial}</div>
+        <div class="message-content">
+            <div class="message-header">
+                <div>
+                    <div class="ai-name">${response.member}</div>
+                    <div class="ai-role">${response.role}</div>
+                </div>
+                <div class="timestamp">${timestamp}</div>
+            </div>
+            <div class="message-text">${formatMessageText(response.response)}</div>
+            ${response.reasoning && response.reasoning !== 'No explicit reasoning provided' ? 
+                `<div class="message-reasoning">💭 ${response.reasoning}</div>` : ''}
+        </div>
+    `;
+    
+    container.appendChild(messageDiv);
+    container.scrollTop = container.scrollHeight;
+}
+
+function getAIInitial(aiName) {
+    const initials = {
+        'Dr. Analysis': 'DA',
+        'Claude Critic': 'CC', 
+        'Gemini Synthesizer': 'GS',
+        'Perplexity Researcher': 'PR',
+        'Grok Challenger': 'GC',
+        'DeepSeek Strategist': 'DS'
+    };
+    return initials[aiName] || aiName.charAt(0);
+}
+
+function formatMessageText(text) {
+    // Convert markdown-like formatting to HTML
+    return text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\n/g, '<br>')
+        .replace(/^- (.*)/gm, '• $1');
+}
+
+function showTypingIndicator(container, aiName) {
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'typing-indicator';
+    typingDiv.id = `typing-${aiName}`;
+    
+    const initial = getAIInitial(aiName);
+    
+    typingDiv.innerHTML = `
+        <div class="avatar">${initial}</div>
+        <div class="typing-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    `;
+    
+    container.appendChild(typingDiv);
+    container.scrollTop = container.scrollHeight;
+    
+    return typingDiv;
+}
+
+function removeTypingIndicator(typingElement) {
+    if (typingElement && typingElement.parentNode) {
+        typingElement.parentNode.removeChild(typingElement);
+    }
+}
+
+function displayConsensus(consensus) {
+    // Hide current speaker
+    document.getElementById('currentSpeaker').style.display = 'none';
+    
+    // Show panel summary
+    const panelSummary = document.getElementById('panelSummary');
+    const consensusContent = document.getElementById('consensusContent');
+    
+    consensusContent.innerHTML = consensus;
+    panelSummary.style.display = 'block';
+}
+
+function displayFinalAnswer(finalAnswer) {
+    const finalAnswerContent = document.getElementById('finalAnswerContent');
+    finalAnswerContent.innerHTML = finalAnswer;
+    
+    // Update status to completed
+    updateSessionStatus('Panel discussion completed successfully! 🎉', 100);
+    document.getElementById('sessionStatus').style.color = '#28a745';
+}
+
+function loadSessionHistory() {
+    fetch('/api/ai_council/history')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                displaySessionHistory(data.sessions);
+            }
+        })
+        .catch(error => console.error('Error loading history:', error));
+}
+
+function displaySessionHistory(sessions) {
+    const container = document.getElementById('sessionHistory');
+    
+    if (!sessions || sessions.length === 0) {
+        container.innerHTML = '<p class="text-muted">No previous sessions yet.</p>';
+        return;
+    }
+    
+    container.innerHTML = sessions.map(session => `
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="card-title">${session.question}</h6>
+                        <p class="card-text small text-muted">
+                            ${session.session_summary}
+                        </p>
+                    </div>
+                    <small class="text-muted">${new Date(session.started_at).toLocaleString()}</small>
+                </div>
+                <div class="mt-2">
+                    <button class="btn btn-sm btn-outline-primary" onclick="viewSession('${session.started_at}')">
+                        View Results
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function viewSession(sessionId) {
+    // Implement session viewing functionality
+    alert('Session viewing functionality to be implemented');
+}
+
+// Load session history on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadSessionHistory();
+});
+</script>
+
+<style>
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+}
+
+.card-header h6 {
+    margin: 0;
+}
+
+#councilSession .card-body {
+    max-height: 800px;
+    overflow-y: auto;
+}
+
+.progress {
+    height: 8px;
+}
+
+.discussion-round {
+    border-left: 3px solid #007bff;
+    padding-left: 15px;
+    margin-bottom: 20px;
+}
+
+/* Panel Discussion Interface - Telegram/Discord Style */
+.panel-discussion-container {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.panel-status-bar {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 16px 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.panel-status-bar h5 {
+    margin: 0;
+    font-weight: 600;
+}
+
+.panel-status-bar small {
+    opacity: 0.9;
+}
+
+.panel-main-area {
+    min-height: 600px;
+    margin: 0;
+}
+
+/* Chat Sidebar - Telegram Style */
+.chat-sidebar {
+    background: #f8f9fa;
+    border-right: 1px solid #e9ecef;
+    padding: 0;
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.sidebar-header {
+    padding: 16px 20px;
+    background: white;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    justify-content: between;
+    align-items: center;
+}
+
+.sidebar-header h6 {
+    margin: 0;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.online-count {
+    font-size: 12px;
+    color: #27ae60;
+    font-weight: 500;
+}
+
+.members-list {
+    padding: 8px 0;
+}
+
+.member-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    border-left: 3px solid transparent;
+}
+
+.member-item:hover {
+    background: rgba(0, 123, 255, 0.05);
+}
+
+.member-item.speaking {
+    background: rgba(0, 123, 255, 0.1);
+    border-left-color: #007bff;
+}
+
+.avatar-sm {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+    color: white;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+/* AI-specific colors for sidebar */
+.avatar-sm.da { background: #2196F3; }
+.avatar-sm.cc { background: #FF9800; }
+.avatar-sm.gs { background: #4CAF50; }
+.avatar-sm.pr { background: #9C27B0; }
+.avatar-sm.gc { background: #F44336; }
+.avatar-sm.ds { background: #607D8B; }
+
+.member-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.member-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: #2c3e50;
+    margin-bottom: 2px;
+}
+
+.member-status {
+    font-size: 12px;
+    color: #7f8c8d;
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 4px;
+}
+
+.status-dot.online {
+    background: #27ae60;
+}
+
+.sidebar-divider {
+    padding: 12px 20px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #7f8c8d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.sidebar-messages {
+    padding: 0 8px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.sidebar-message {
+    background: white;
+    margin: 4px 12px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    border-left: 3px solid #ddd;
+    animation: slideInSidebar 0.3s ease-out;
+}
+
+/* Main Panel Area */
+.panel-main {
+    padding: 0;
+    background: white;
+}
+
+.current-speaker {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.speaker-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    margin-right: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.2);
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.speaker-info {
+    flex: 1;
+}
+
+.speaker-name {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.speaker-role {
+    margin: 0;
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+.speaking-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.wave {
+    width: 4px;
+    height: 20px;
+    background: rgba(255,255,255,0.8);
+    border-radius: 2px;
+    animation: wave 1.2s infinite ease-in-out;
+}
+
+.wave:nth-child(2) { animation-delay: 0.1s; }
+.wave:nth-child(3) { animation-delay: 0.2s; }
+
+.discussion-transcript {
+    padding: 24px;
+    max-height: 400px;
+    overflow-y: auto;
+    background: #fafafa;
+}
+
+.transcript-welcome {
+    text-align: center;
+    color: #7f8c8d;
+    padding: 40px 0;
+}
+
+.transcript-message {
+    background: white;
+    margin-bottom: 16px;
+    padding: 16px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    border-left: 4px solid #ddd;
+    animation: slideInPanel 0.4s ease-out;
+}
+
+.transcript-message.speaking {
+    border-left-color: #007bff;
+    background: #f8f9ff;
+}
+
+.transcript-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.transcript-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    margin-right: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 12px;
+    color: white;
+}
+
+.transcript-name {
+    font-weight: 600;
+    margin: 0;
+    color: #2c3e50;
+}
+
+.transcript-time {
+    font-size: 12px;
+    color: #7f8c8d;
+    margin-left: auto;
+}
+
+.transcript-content {
+    line-height: 1.6;
+    color: #34495e;
+}
+
+.panel-summary {
+    padding: 24px;
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+}
+
+.summary-consensus, .summary-final {
+    background: white;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.summary-consensus h6, .summary-final h6 {
+    color: #2c3e50;
+    margin-bottom: 12px;
+}
+
+/* Animations */
+@keyframes wave {
+    0%, 100% { height: 20px; }
+    50% { height: 32px; }
+}
+
+@keyframes slideInSidebar {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideInPanel {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .panel-main-area {
+        flex-direction: column;
+    }
+    
+    .chat-sidebar {
+        max-height: 200px;
+        border-right: none;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .panel-main {
+        min-height: 400px;
+    }
+}
+
+.chat-header {
+    background: #007bff;
+    color: white;
+    padding: 12px 16px;
+    border-radius: 12px 12px 0 0;
+    text-align: center;
+}
+
+.chat-header h6 {
+    margin: 0;
+    font-size: 14px;
+}
+
+.chat-messages {
+    padding: 16px;
+    max-height: 600px;
+    overflow-y: auto;
+    background: linear-gradient(to bottom, #e5ddd5 0%, #e5ddd5 100%);
+    background-image: 
+        radial-gradient(circle at 50% 50%, rgba(255,255,255,0.3) 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+.ai-message {
+    display: flex;
+    margin-bottom: 12px;
+    animation: slideIn 0.3s ease-out;
+}
+
+.ai-message.typing {
+    opacity: 0.7;
+}
+
+.ai-message .avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: white;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+/* AI-specific colors */
+.ai-message[data-ai="Dr. Analysis"] .avatar { background: #2196F3; }
+.ai-message[data-ai="Claude Critic"] .avatar { background: #FF9800; }
+.ai-message[data-ai="Gemini Synthesizer"] .avatar { background: #4CAF50; }
+.ai-message[data-ai="Perplexity Researcher"] .avatar { background: #9C27B0; }
+.ai-message[data-ai="Grok Challenger"] .avatar { background: #F44336; }
+.ai-message[data-ai="DeepSeek Strategist"] .avatar { background: #607D8B; }
+
+.ai-message .message-content {
+    flex: 1;
+    background: white;
+    border-radius: 8px 18px 18px 8px;
+    padding: 12px 16px;
+    position: relative;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    max-width: calc(100% - 60px);
+}
+
+.ai-message .message-content::before {
+    content: '';
+    position: absolute;
+    left: -8px;
+    top: 12px;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 8px 8px 0;
+    border-color: transparent white transparent transparent;
+}
+
+.ai-message .message-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.ai-message .ai-name {
+    font-weight: bold;
+    font-size: 12px;
+    color: #007bff;
+}
+
+.ai-message .ai-role {
+    font-size: 10px;
+    color: #666;
+    font-style: italic;
+}
+
+.ai-message .timestamp {
+    font-size: 10px;
+    color: #999;
+}
+
+.ai-message .message-text {
+    font-size: 14px;
+    line-height: 1.4;
+    color: #333;
+}
+
+.ai-message .message-reasoning {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #f0f0f0;
+    font-size: 12px;
+    color: #666;
+    font-style: italic;
+}
+
+/* Typing indicator */
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+    padding: 12px 16px;
+}
+
+.typing-indicator .avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 12px;
+    background: #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: pulse 1.5s infinite;
+}
+
+.typing-dots {
+    display: flex;
+    align-items: center;
+    background: white;
+    border-radius: 18px;
+    padding: 12px 16px;
+    margin-left: 4px;
+}
+
+.typing-dots span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #999;
+    margin: 0 2px;
+    animation: typing 1.4s infinite ease-in-out;
+}
+
+.typing-dots span:nth-child(1) { animation-delay: 0s; }
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+/* Round separator */
+.round-separator {
+    text-align: center;
+    margin: 24px 0;
+    position: relative;
+}
+
+.round-separator::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: #ddd;
+}
+
+.round-separator span {
+    background: #e5ddd5;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #666;
+    position: relative;
+    z-index: 1;
+}
+
+/* Animations */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+@keyframes typing {
+    0%, 20% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
+}
+</style>
+{% endblock %}
