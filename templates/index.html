@@ -818,31 +818,28 @@ function truncateText(text, maxLength) {
 
 // Vector Statistics and Management
 function loadVectorStats() {
-    // Check if vector search is available
-    fetch('/semantic_search', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query: 'test' })
-    })
+    // Fetch actual vector stats from the backend
+    fetch('/api/vector/stats')
     .then(response => response.json())
     .then(data => {
-        const isAvailable = data.status !== 'error' || !data.message.includes('not available');
-        updateVectorStats(isAvailable);
+        if (data.status === 'success') {
+            updateVectorStats(data);
+        } else {
+            updateVectorStats({ available: false });
+        }
     })
     .catch(() => {
-        updateVectorStats(false);
+        updateVectorStats({ available: false });
     });
 }
 
-function updateVectorStats(isAvailable) {
+function updateVectorStats(stats) {
     const countElement = document.getElementById('vectorStatsCount');
     const methodElement = document.getElementById('vectorStatsMethod');
     const modelElement = document.getElementById('embeddingModel');
     const databaseElement = document.getElementById('vectorDatabase');
     
-    if (!isAvailable) {
+    if (!stats.available) {
         countElement.textContent = 'N/A';
         methodElement.textContent = 'Not Available';
         modelElement.textContent = 'Vector search disabled';
@@ -850,22 +847,16 @@ function updateVectorStats(isAvailable) {
         return;
     }
     
-    // Estimate embeddings count (this could be enhanced with a dedicated endpoint)
-    const totalSummaries = {{ summaries|length }};
-    const estimatedEmbeddings = Math.floor(totalSummaries * 0.7); // Placeholder estimation
+    // Use actual data from backend
+    countElement.textContent = `${stats.indexed}/${stats.total}`;
+    methodElement.textContent = stats.method || 'AI Powered';
+    modelElement.textContent = stats.model || 'OpenAI Embeddings';
+    databaseElement.textContent = stats.database || 'Supabase (pgvector)';
     
-    countElement.textContent = `${estimatedEmbeddings}/${totalSummaries}`;
-    methodElement.textContent = 'AI Powered';
-    
-    // Check if OpenAI key exists (simple heuristic)
-    const hasOpenAI = true; // This would need to be passed from backend
-    modelElement.textContent = hasOpenAI ? 'OpenAI Embeddings' : 'Sentence Transformers';
-    databaseElement.textContent = 'Supabase (pgvector)';
-    
-    // Update progress bar
-    const percentage = totalSummaries > 0 ? (estimatedEmbeddings / totalSummaries) * 100 : 0;
+    // Update progress bar with real data
+    const percentage = stats.percentage || 0;
     document.getElementById('embeddingProgress').style.width = percentage + '%';
-    document.getElementById('embeddingStats').textContent = `${estimatedEmbeddings} of ${totalSummaries} summaries have embeddings`;
+    document.getElementById('embeddingStats').textContent = `${stats.indexed} of ${stats.total} summaries have embeddings`;
     document.getElementById('embeddingPercentage').textContent = `${Math.round(percentage)}%`;
 }
 

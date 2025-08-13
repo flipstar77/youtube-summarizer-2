@@ -272,11 +272,24 @@ class EnhancedSummarizer:
     def _get_system_prompt(self, summary_type):
         """Get system prompt based on summary type"""
         prompts = {
-            "brief": "You are a helpful assistant that creates brief, concise summaries in 2-3 sentences.",
-            "detailed": "You are a helpful assistant that creates comprehensive, detailed summaries highlighting key points and main ideas.",
-            "bullet": "You are a helpful assistant that creates clear bullet-point summaries of key information.",
+            "brief": """You are a summarizer that produces extremely concise, high-value summaries.
+Output must be exactly 2-3 sentences.
+Cover the main topic, purpose, and 1 most important takeaway.
+Ensure the summary stands alone without requiring the video.""",
+            "detailed": """You are a summarizer creating clear, structured, and detailed summaries.
+Organize content into short sections with descriptive headings.
+Keep paragraphs short (max 4 sentences).
+Highlight names, numbers, and key terms in **bold**.
+Finish with a final sentence summarizing the whole.""",
+            "bullet": """You are a summarizer creating bullet-point summaries.
+Output exactly 6-10 bullets, ordered by importance.
+Each bullet ≤ 15 words, clear and factual.
+No filler or repetition.""",
             "tutorial": "You are a professional tutorial-to-guide converter. Your task is to turn transcripts into clear, detailed, and self-contained written tutorials.",
-            "professional": "You are a professional summarizer specializing in video and podcast transcripts. Your goal is to create clear, concise, and self-contained summaries.",
+            "professional": """You are a professional summarizer specializing in video and podcast transcripts.
+Include "Why relevant?" context in the introduction.
+Structure each section with title and mini-conclusion.
+End with actionable recommendation or key insight.""",
             "custom": "You are a helpful AI assistant that follows specific user instructions for content processing."
         }
         return prompts.get(summary_type, prompts["detailed"])
@@ -287,9 +300,9 @@ class EnhancedSummarizer:
             return f"{custom_prompt}\n\nTranscript:\n{text}"
         
         prompts = {
-            "brief": f"Provide a brief 2-3 sentence summary of the following YouTube video transcript:\n\n{text}",
-            "detailed": f"Provide a comprehensive summary of the following YouTube video transcript, highlighting key points and main ideas:\n\n{text}",
-            "bullet": f"Create a bullet-point summary of the key points from the following YouTube video transcript:\n\n{text}",
+            "brief": f"Summarize the following YouTube transcript in exactly 2-3 sentences, covering the main topic, the purpose, and the single most important takeaway. Ensure the reader understands without watching the video:\n\n{text}",
+            "detailed": f"Create a structured summary with clear sections and headings. Bold important terms, numbers and names. End with one concluding sentence. Transcript:\n\n{text}",
+            "bullet": f"Create exactly 6-10 bullet points from this transcript, ordered by importance. Each bullet should be ≤15 words. No repetition:\n\n{text}",
             "tutorial": f"""Turn the provided transcript into a clear, detailed, and self-contained written tutorial so that the reader can follow it without watching the video.
 
 Instructions:
@@ -345,14 +358,15 @@ Transcript:
         }
         return prompts.get(summary_type, prompts["detailed"])
     
-    def _summarize_with_openai(self, provider_config, text, summary_type="detailed", model=None, custom_prompt=None):
+    def _summarize_with_openai(self, provider_config, text, summary_type="detailed", model=None, custom_prompt=None, max_tokens=None):
         """Summarize using OpenAI"""
         try:
             client = provider_config['client']
             model = model or 'gpt-3.5-turbo'
             
-            # Use more tokens for tutorial and professional summaries
-            max_tokens = 500 if summary_type == "brief" else (1500 if summary_type in ["tutorial", "professional"] else 1000)
+            # Use provided max_tokens or default based on summary type
+            if max_tokens is None:
+                max_tokens = 500 if summary_type == "brief" else (1500 if summary_type in ["tutorial", "professional"] else 1000)
             
             # Determine if model needs max_completion_tokens vs max_tokens
             # Based on OpenAI API documentation and testing
@@ -420,7 +434,7 @@ Transcript:
         except Exception as e:
             raise Exception(f"OpenAI error: {str(e)}")
     
-    def _summarize_with_api(self, provider_config, text, summary_type="detailed", model=None, custom_prompt=None):
+    def _summarize_with_api(self, provider_config, text, summary_type="detailed", model=None, custom_prompt=None, max_tokens=None):
         """Generic method for API-based providers (Perplexity, DeepSeek, Grok)"""
         try:
             headers = {
@@ -437,8 +451,9 @@ Transcript:
                 elif provider_config['type'] == 'grok':
                     model = 'grok-3-mini-beta'
             
-            # Use more tokens for tutorial and professional summaries
-            max_tokens = 500 if summary_type == "brief" else (1500 if summary_type in ["tutorial", "professional"] else 1000)
+            # Use provided max_tokens or default based on summary type
+            if max_tokens is None:
+                max_tokens = 500 if summary_type == "brief" else (1500 if summary_type in ["tutorial", "professional"] else 1000)
             
             data = {
                 'model': model,
@@ -461,7 +476,7 @@ Transcript:
         except KeyError as e:
             raise Exception(f"{provider_config['type'].title()} response format error: {str(e)}")
     
-    def _summarize_with_gemini(self, provider_config, text, summary_type="detailed", model=None, custom_prompt=None):
+    def _summarize_with_gemini(self, provider_config, text, summary_type="detailed", model=None, custom_prompt=None, max_tokens=None):
         """Summarize using Gemini API"""
         try:
             model = model or 'gemini-2.5-flash'
@@ -472,8 +487,9 @@ Transcript:
             url = f"{provider_config['base_url']}/{model}:generateContent"
             params = {'key': provider_config['api_key']}
             
-            # Use more tokens for tutorial and professional summaries
-            max_tokens = 500 if summary_type == "brief" else (1500 if summary_type in ["tutorial", "professional"] else 1000)
+            # Use provided max_tokens or default based on summary type
+            if max_tokens is None:
+                max_tokens = 500 if summary_type == "brief" else (1500 if summary_type in ["tutorial", "professional"] else 1000)
             
             data = {
                 'contents': [{
@@ -496,7 +512,7 @@ Transcript:
         except KeyError as e:
             raise Exception(f"Gemini response format error: {str(e)}")
     
-    def _summarize_with_claude(self, provider_config, text, summary_type="detailed", model=None, custom_prompt=None):
+    def _summarize_with_claude(self, provider_config, text, summary_type="detailed", model=None, custom_prompt=None, max_tokens=None):
         """Summarize using Claude/Anthropic API"""
         try:
             model = model or 'claude-3-5-sonnet-20241022'
@@ -506,8 +522,9 @@ Transcript:
                 'anthropic-version': '2023-06-01'
             }
             
-            # Use more tokens for tutorial and professional summaries
-            max_tokens = 500 if summary_type == "brief" else (1500 if summary_type in ["tutorial", "professional"] else 1000)
+            # Use provided max_tokens or default based on summary type
+            if max_tokens is None:
+                max_tokens = 500 if summary_type == "brief" else (1500 if summary_type in ["tutorial", "professional"] else 1000)
             
             # Claude uses a different message format
             system_prompt = self._get_system_prompt(summary_type)
@@ -537,7 +554,7 @@ Transcript:
         except KeyError as e:
             raise Exception(f"Claude response format error: {str(e)}")
     
-    def summarize_chunk(self, chunk, summary_type="detailed", provider="openai", model=None, custom_prompt=None):
+    def summarize_chunk(self, chunk, summary_type="detailed", provider="openai", model=None, custom_prompt=None, max_tokens=None):
         """Summarize a single chunk of text using specified provider"""
         if provider not in self.providers:
             # Fallback to first available provider
@@ -548,14 +565,14 @@ Transcript:
         
         try:
             if provider_config['type'] == 'openai':
-                return self._summarize_with_openai(provider_config, chunk, summary_type, model, custom_prompt)
+                return self._summarize_with_openai(provider_config, chunk, summary_type, model, custom_prompt, max_tokens)
             elif provider_config['type'] == 'gemini':
-                return self._summarize_with_gemini(provider_config, chunk, summary_type, model, custom_prompt)
+                return self._summarize_with_gemini(provider_config, chunk, summary_type, model, custom_prompt, max_tokens)
             elif provider_config['type'] == 'claude':
-                return self._summarize_with_claude(provider_config, chunk, summary_type, model, custom_prompt)
+                return self._summarize_with_claude(provider_config, chunk, summary_type, model, custom_prompt, max_tokens)
             else:
                 # Perplexity, DeepSeek, Grok
-                return self._summarize_with_api(provider_config, chunk, summary_type, model, custom_prompt)
+                return self._summarize_with_api(provider_config, chunk, summary_type, model, custom_prompt, max_tokens)
                 
         except Exception as e:
             # Try fallback to OpenAI if available and not already using it
@@ -565,12 +582,12 @@ Transcript:
             else:
                 raise e
     
-    def summarize(self, text, summary_type="detailed", provider="openai", model=None, custom_prompt=None):
+    def summarize(self, text, summary_type="detailed", provider="openai", model=None, custom_prompt=None, max_tokens=None):
         """Summarize text using specified provider, with chunking for long texts"""
         print(f"[INFO] Using {provider} for {summary_type} summary")
         
         if len(text) < 3000:
-            return self.summarize_chunk(text, summary_type, provider, model, custom_prompt)
+            return self.summarize_chunk(text, summary_type, provider, model, custom_prompt, max_tokens)
         
         # For longer texts, chunk and summarize each chunk
         chunks = self.chunk_text(text)
@@ -584,7 +601,7 @@ Transcript:
         for i, chunk in enumerate(chunks):
             try:
                 print(f"[INFO] Processing chunk {i+1}/{len(chunks)} with {provider}...")
-                summary = self.summarize_chunk(chunk, summary_type, provider, model, custom_prompt)
+                summary = self.summarize_chunk(chunk, summary_type, provider, model, custom_prompt, max_tokens)
                 chunk_summaries.append(summary)
             except Exception as e:
                 print(f"[ERROR] Failed to process chunk {i+1}: {str(e)[:100]}...")
@@ -606,7 +623,8 @@ Transcript:
                     summary_type,
                     provider,
                     model,
-                    custom_prompt
+                    custom_prompt,
+                    max_tokens
                 )
                 print(f"[SUCCESS] Final summary completed, length: {len(final_summary)} chars")
                 return final_summary

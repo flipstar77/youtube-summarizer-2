@@ -132,6 +132,12 @@ def new_summary():
         ai_provider = request.form.get('ai_provider', 'openai')
         ai_model = request.form.get('ai_model')
         custom_prompt = request.form.get('custom_prompt', '').strip()
+        max_tokens = request.form.get('max_tokens')
+        if max_tokens:
+            try:
+                max_tokens = int(max_tokens)
+            except ValueError:
+                max_tokens = None
         
         # Validate inputs
         if not url:
@@ -154,7 +160,8 @@ def new_summary():
                 summary_type, 
                 provider=ai_provider,
                 model=ai_model,
-                custom_prompt=custom_prompt if summary_type == 'custom' else None
+                custom_prompt=custom_prompt if summary_type == 'custom' else None,
+                max_tokens=max_tokens
             )
         else:
             # Fallback to original TextSummarizer
@@ -728,6 +735,49 @@ def get_video_info(summary_id):
         
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/vector/stats', methods=['GET'])
+def get_vector_stats():
+    """Get vector embedding statistics"""
+    try:
+        if USE_SUPABASE and isinstance(db, SupabaseDatabase):
+            # Get total summaries count
+            total_result = db.client.table('summaries').select('id', count='exact').execute()
+            total_count = total_result.count if total_result else 0
+            
+            # Get summaries with embeddings count
+            with_embeddings_result = db.client.table('summaries').select('id', count='exact').not_.is_('embedding', 'null').execute()
+            indexed_count = with_embeddings_result.count if with_embeddings_result else 0
+            
+            return jsonify({
+                'status': 'success',
+                'total': total_count,
+                'indexed': indexed_count,
+                'percentage': round((indexed_count / total_count * 100) if total_count > 0 else 0, 1),
+                'available': True,
+                'method': 'AI Powered',
+                'model': 'OpenAI Embeddings' if os.getenv('OPENAI_API_KEY') else 'Sentence Transformers',
+                'database': 'Supabase (pgvector)'
+            })
+        else:
+            # SQLite fallback - no vector support
+            return jsonify({
+                'status': 'success',
+                'total': len(db.get_all_summaries()) if db else 0,
+                'indexed': 0,
+                'percentage': 0,
+                'available': False,
+                'method': 'Not Available',
+                'model': 'Vector search disabled',
+                'database': 'SQLite (no vectors)'
+            })
+    except Exception as e:
+        print(f"[ERROR] Failed to get vector stats: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e),
+            'available': False
+        }), 500
 
 @app.route('/semantic_search', methods=['POST'])
 def semantic_search():
